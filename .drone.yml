@@ -1,0 +1,7 @@
+pipeline:
+  test:
+    image: node:carbon
+    commands:
+      - apk add --no-cache --update nodejs
+      - npm install
+      - npm coverage
