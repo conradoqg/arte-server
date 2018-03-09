@@ -17,6 +17,10 @@ describe('HTTPServer', async () => {
         const config = await dbService.config.getConfig();
         config.storageDB = 'test/data/storage';
         config.metadataDB = 'mongodb://localhost/test';
+        config.template.fileName = '{name}-{version}-{tag}-{os}-{arch}-{language}-{country}-{customVersion}.zip';
+        config.template.properties.customVersion = {
+            default: 'none'
+        };
         await dbService.config.updateConfig(config);
         await dbService.connect();
         const bucketServer = new Bucket(dbService.storage, dbService.metadata);
@@ -92,6 +96,7 @@ describe('HTTPServer', async () => {
             .expect(200);
         result.type.should.be.equal('application/zip');
         result.body.should.be.an.instanceof(Buffer);
+        result.headers['content-disposition'].should.include('name-1.0-undefined-all-x86-all-all-none.zip');
     });
 
     step('should not get an artifact from an inexistent bucket', async () => {
@@ -120,5 +125,32 @@ describe('HTTPServer', async () => {
             .expect(200);
         result.type.should.be.equal('application/zip');
         result.body.should.be.an.instanceof(Buffer);
+        result.headers['content-disposition'].should.include('name-2.0-undefined-all-x86-all-all-none.zip');
+    });
+
+    step('should get the latest custom version of two artifacts with a custom version', async () => {
+        let result = null;
+        result = await supertest(context.server.app)
+            .put('/buckets/bucket2/artifacts/name/1.0')
+            .attach('artifact', path.resolve(__dirname, 'file.zip'))
+            .field('customVersion', '1')
+            .expect(200);
+        result.body.should.be.an('object');
+
+        result = await supertest(context.server.app)
+            .put('/buckets/bucket2/artifacts/name/1.0')
+            .attach('artifact', path.resolve(__dirname, 'file.zip'))
+            .field('customVersion', '2')
+            .expect(200);
+        result.body.should.be.an('object');
+
+        result = await supertest(context.server.app)
+            .get('/buckets/bucket2/artifacts/name/1.0?customVersion=latest')
+            .buffer(true)
+            .responseType('blob')
+            .expect(200);
+        result.type.should.be.equal('application/zip');
+        result.body.should.be.an.instanceof(Buffer);
+        result.headers['content-disposition'].should.include('name-1.0-undefined-all-all-all-all-2.zip');
     });
 });
