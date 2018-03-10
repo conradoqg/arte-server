@@ -67,6 +67,7 @@ describe('HTTPServer', async () => {
         const bucketsResult = await supertest(context.server.app)
             .get('/buckets')
             .expect(200);
+        should.exist(bucketsResult.body);
         bucketsResult.body.should.be.an('array');
     });
 
@@ -88,9 +89,28 @@ describe('HTTPServer', async () => {
         result.body.should.be.an('object');
     });
 
-    step('should get an artifact', async () => {
+    step('should get an artifact data', async () => {
         const result = await supertest(context.server.app)
             .get('/buckets/bucket1/artifacts/name/1.0?arch=x86')
+            .accept('application/json')
+            .expect(200);
+        should.exist(result.body);
+        result.body.should.be.deep.equal(
+            {
+                bucket: 'bucket1',
+                name: 'name',
+                version: '1.0',
+                normalizedVersion: '0000000001.0000000000',
+                path: 'bucket1\\name-1.0-undefined-all-x86-all-all-none.zip',
+                fileSize: 561,
+                metadata: { arch: 'x86', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
+            });
+    });
+
+    step('should get an artifact file', async () => {
+        const result = await supertest(context.server.app)
+            .get('/buckets/bucket1/artifacts/name/1.0?arch=x86')
+            .accept('application/zip')
             .buffer(true)
             .responseType('blob')
             .expect(200);
@@ -120,6 +140,7 @@ describe('HTTPServer', async () => {
     step('should get the latest artifact', async () => {
         const result = await supertest(context.server.app)
             .get('/buckets/bucket1/artifacts/name/latest?arch=x86')
+            .accept('application/zip')
             .buffer(true)
             .responseType('blob')
             .expect(200);
@@ -146,6 +167,7 @@ describe('HTTPServer', async () => {
 
         result = await supertest(context.server.app)
             .get('/buckets/bucket2/artifacts/name/1.0?customVersion=latest')
+            .accept('application/zip')
             .buffer(true)
             .responseType('blob')
             .expect(200);
