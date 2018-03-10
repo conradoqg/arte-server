@@ -95,7 +95,8 @@ describe('HTTPServer', async () => {
             .accept('application/json')
             .expect(200);
         should.exist(result.body);
-        result.body.should.be.deep.equal(
+        result.body.should.be.an('array').and.to.have.lengthOf(1);
+        result.body[0].should.be.deep.equal(
             {
                 bucket: 'bucket1',
                 name: 'name',
@@ -174,5 +175,12 @@ describe('HTTPServer', async () => {
         result.type.should.be.equal('application/zip');
         result.body.should.be.an.instanceof(Buffer);
         result.headers['content-disposition'].should.include('name-1.0-undefined-all-all-all-all-2.zip');
+    });
+
+    step('should get the all the artifacts of version 1', async () => {
+        const result = await supertest(context.server.app)
+            .get('/buckets/bucket1/artifacts/name/1.0/?arch=x86')            
+            .expect(200);
+        should.exist(result.body);        
     });
 });
