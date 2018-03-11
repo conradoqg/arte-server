@@ -179,8 +179,33 @@ describe('HTTPServer', async () => {
 
     step('should get the all the artifacts of version 1', async () => {
         const result = await supertest(context.server.app)
-            .get('/buckets/bucket1/artifacts/name/1.0/?arch=x86')            
+            .get('/buckets/bucket1/artifacts/name/1.0/?arch=x86')
             .expect(200);
-        should.exist(result.body);        
+        should.exist(result.body);
+    });
+
+    step('should delete the the artifact of version 1', async () => {
+        const result = await supertest(context.server.app)
+            .delete('/buckets/bucket1/artifacts/name/1.0/?arch=x86')
+            .expect(200);
+        should.exist(result.body);
+        result.body.should.be.an('array').and.to.have.lengthOf(1);
+        result.body[0].should.be.deep.equal(
+            {
+                bucket: 'bucket1',
+                name: 'name',
+                version: '1.0',
+                normalizedVersion: '0000000001.0000000000',
+                path: 'bucket1\\name-1.0-undefined-all-x86-all-all-none.zip',
+                fileSize: 561,
+                metadata: { arch: 'x86', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
+            });
+
+        await supertest(context.server.app)
+            .get('/buckets/bucket1/artifacts/name/1.0?arch=x86')            
+            .accept('application/zip')
+            .buffer(true)
+            .responseType('blob')
+            .expect(404);
     });
 });
