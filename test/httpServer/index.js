@@ -7,12 +7,17 @@ const DB = require('../../lib/db');
 const Bucket = require('../../lib/bucket');
 const Artifact = require('../../lib/artifact');
 
+const Mongoose = require('mongoose').Mongoose;
+const mongoose = new Mongoose();
+const Mockgoose = require('mockgoose').Mockgoose;
+const mockgoose = new Mockgoose(mongoose);
 
 describe('HTTPServer', async () => {
 
     let context = {};
 
     const createContext = async () => {
+        await mockgoose.prepareStorage();
         const dbService = new DB('test/data/config.json');
         const config = await dbService.config.getConfig();
         config.storageDB = 'test/data/storage';
@@ -43,6 +48,9 @@ describe('HTTPServer', async () => {
 
     after(async () => {
         await deleteContext(context);
+        await mockgoose.helper.reset();
+        await mongoose.disconnect();
+        mockgoose.mongodHelper.mongoBin.childProcess.kill('SIGTERM');
     });
 
     it('should ping', async () => {
@@ -104,6 +112,7 @@ describe('HTTPServer', async () => {
                 normalizedVersion: '0000000001.0000000000',
                 path: 'bucket1\\name-1.0-undefined-all-x86-all-all-none.zip',
                 fileSize: 561,
+                lastUpdate: result.body[0].lastUpdate,
                 metadata: { arch: 'x86', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
             });
     });
@@ -198,11 +207,12 @@ describe('HTTPServer', async () => {
                 normalizedVersion: '0000000001.0000000000',
                 path: 'bucket1\\name-1.0-undefined-all-x86-all-all-none.zip',
                 fileSize: 561,
+                lastUpdate: result.body[0].lastUpdate,
                 metadata: { arch: 'x86', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
             });
 
         await supertest(context.server.app)
-            .get('/buckets/bucket1/artifacts/name/1.0?arch=x86')            
+            .get('/buckets/bucket1/artifacts/name/1.0?arch=x86')
             .accept('application/zip')
             .buffer(true)
             .responseType('blob')
