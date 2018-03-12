@@ -110,7 +110,7 @@ describe('HTTPServer', async () => {
                 name: 'name',
                 version: '1.0',
                 normalizedVersion: '0000000001.0000000000',
-                path: 'bucket1\\name-1.0-undefined-all-x86-all-all-none.zip',
+                path: path.normalize('bucket1/name-1.0-undefined-all-x86-all-all-none.zip'),
                 fileSize: 561,
                 lastUpdate: result.body[0].lastUpdate,
                 metadata: { arch: 'x86', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
@@ -205,7 +205,7 @@ describe('HTTPServer', async () => {
                 name: 'name',
                 version: '1.0',
                 normalizedVersion: '0000000001.0000000000',
-                path: 'bucket1\\name-1.0-undefined-all-x86-all-all-none.zip',
+                path: path.normalize('bucket1/name-1.0-undefined-all-x86-all-all-none.zip'),
                 fileSize: 561,
                 lastUpdate: result.body[0].lastUpdate,
                 metadata: { arch: 'x86', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
