@@ -89,10 +89,6 @@ describe('HTTPServer', async () => {
         const config = await dbService.config.getConfig();
         config.storageDB = 'test/data/storage';
         config.metadataDB = 'mongodb://localhost/test';
-        config.template.fileName = '{name}-{version}-{tag}-{os}-{arch}-{language}-{country}-{customVersion}.zip';
-        config.template.properties.customVersion = {
-            default: 'none'
-        };
         await dbService.config.updateConfig(config);
         await dbService.connect();
         const bucketServer = new Bucket(dbService.storage, dbService.metadata);
@@ -122,7 +118,7 @@ describe('HTTPServer', async () => {
 
     describe('get /ping', async () => {
         // get ping -> OK
-        it('should ping', async () => {
+        step('should ping', async () => {
             return await supertest(context.server.app)
                 .get('/ping')
                 .expect(200);
@@ -140,13 +136,51 @@ describe('HTTPServer', async () => {
         });
     });
 
-    describe('post /buckets', async () => {        
+    describe('post /buckets', async () => {
         // post bucket1 -> bucket1
         step('should create the bucket 1', async () => {
             const bucketsResult = await supertest(context.server.app)
                 .post('/buckets')
                 .send({
-                    name: 'bucket1'
+                    name: 'bucket1',
+                    template: {
+                        fileName: '{name}-{version}-{tag}-{os}-{arch}-{language}-{country}-{customVersion}.zip',
+                        properties: {
+                            tag: {
+                                type: 'string'
+                            },
+                            os: {
+                                type: 'string',
+                                oneOf: [
+                                    'windows',
+                                    'linux',
+                                    'macos',
+                                    'all'
+                                ],
+                                default: 'all'
+                            },
+                            arch: {
+                                type: 'string',
+                                oneOf: [
+                                    'x86',
+                                    'x86_64',
+                                    'all'
+                                ],
+                                default: 'all'
+                            },
+                            language: {
+                                type: 'string',
+                                default: 'all'
+                            },
+                            country: {
+                                type: 'string',
+                                default: 'all'
+                            },
+                            customVersion: {
+                                default: 'none'
+                            }
+                        }
+                    }
                 })
                 .expect(200);
             should.exist(bucketsResult.body);
@@ -282,7 +316,7 @@ describe('HTTPServer', async () => {
 
     describe('get /buckets/:bucketName/artifacts/:artifactName/:version? (application/zip)', async () => {
         // get zip bucket1/artifact1 -> bucket1/artifact1/2.0?os=all&arch=all
-        it('should get the artifact 1 without specifying the version', async () => {
+        step('should get the artifact 1 without specifying the version', async () => {
             const result = await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact1')
                 .accept('application/zip')
@@ -296,7 +330,7 @@ describe('HTTPServer', async () => {
         });
 
         // get zip bucket1/artifact1/latest -> bucket1/artifact1/2.0?os=all&arch=all
-        it('should get the latest artifact 1', async () => {
+        step('should get the latest artifact 1', async () => {
             const result = await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact1/latest')
                 .accept('application/zip')
@@ -310,7 +344,7 @@ describe('HTTPServer', async () => {
         });
 
         // get zip bucket1/artifact1/oldest -> bucket1/artifact1/1.0?os=all&arch=all
-        it('should get the oldest artifact 1', async () => {
+        step('should get the oldest artifact 1', async () => {
             const result = await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact1/oldest')
                 .accept('application/zip')
@@ -324,7 +358,7 @@ describe('HTTPServer', async () => {
         });
 
         // get zip bucket1/artifact1/1.0 -> bucket1/artifact1/1.0?os=all&arch=all
-        it('should get the artifact 1 with version 1.0', async () => {
+        step('should get the artifact 1 with version 1.0', async () => {
             const result = await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact1/1.0')
                 .accept('application/zip')
@@ -338,7 +372,7 @@ describe('HTTPServer', async () => {
         });
 
         // get zip bucket1/artifact1/2.0 -> bucket1/artifact1/2.0?os=all&arch=all
-        it('should get the artifact 1 with version 2.0', async () => {
+        step('should get the artifact 1 with version 2.0', async () => {
             const result = await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact1/2.0')
                 .accept('application/zip')
@@ -352,7 +386,7 @@ describe('HTTPServer', async () => {
         });
 
         // get zip bucket1/artifact1/3.0 -> Error 404
-        it('should not get the artifact 1 with version 3.0', async () => {
+        step('should not get the artifact 1 with version 3.0', async () => {
             return await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact1/3.0')
                 .accept('application/zip')
@@ -362,7 +396,7 @@ describe('HTTPServer', async () => {
         });
 
         // get zip bucket1/artifact2 -> Error 404        
-        it('should not get the artifact 2 without specifying the version', async () => {
+        step('should not get the artifact 2 without specifying the version', async () => {
             return await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact2')
                 .accept('application/zip')
@@ -372,7 +406,7 @@ describe('HTTPServer', async () => {
         });
 
         // get zip bucket1/artifact2/latest -> Error 404
-        it('should not get the latest artifact 2', async () => {
+        step('should not get the latest artifact 2', async () => {
             return await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact2/latest')
                 .accept('application/zip')
@@ -382,7 +416,7 @@ describe('HTTPServer', async () => {
         });
 
         // get zip bucket1/artifact2/oldest -> Error 404
-        it('should not get the oldest artifact 2', async () => {
+        step('should not get the oldest artifact 2', async () => {
             return await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact2/oldest')
                 .accept('application/zip')
@@ -392,7 +426,7 @@ describe('HTTPServer', async () => {
         });
 
         // get zip bucket1/artifact3/1.0?os=linux -> bucket1/artifact3/1.0?os=linux&arch=all
-        it('should get the artifact 3 with version 1.0 and metadata os=linux', async () => {
+        step('should get the artifact 3 with version 1.0 and metadata os=linux', async () => {
             const result = await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact3/1.0?os=linux')
                 .accept('application/zip')
@@ -406,7 +440,7 @@ describe('HTTPServer', async () => {
         });
 
         // get zip bucket1/artifact3/1.0?os=linux&arch=x86 -> bucket1/artifact3/1.0?os=linux&arch=x86
-        it('should get the artifact 3 with version 1.0 and metadata os=linux and arch=x86', async () => {
+        step('should get the artifact 3 with version 1.0 and metadata os=linux and arch=x86', async () => {
             const result = await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact3/1.0?os=linux&arch=x86')
                 .accept('application/zip')
@@ -420,7 +454,7 @@ describe('HTTPServer', async () => {
         });
 
         // get zip bucket1/artifact3/1.0?os=macos -> bucket1/artifact3/1.0?os=macos&arch=all
-        it('should get the artifact 3 with version 1.0 and metadata os=macos', async () => {
+        step('should get the artifact 3 with version 1.0 and metadata os=macos', async () => {
             const result = await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact3/1.0?os=macos')
                 .accept('application/zip')
@@ -434,7 +468,7 @@ describe('HTTPServer', async () => {
         });
 
         // get zip bucket1/artifact3/1.0?os=latest -> bucket1/artifact3/1.0?os=macos&arch=all
-        it('should get the artifact 3 with version 1.0 and metadata os=latest', async () => {
+        step('should get the artifact 3 with version 1.0 and metadata os=latest', async () => {
             const result = await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact3/1.0?os=latest')
                 .accept('application/zip')
@@ -448,7 +482,7 @@ describe('HTTPServer', async () => {
         });
 
         // get zip bucket1/artifact3/1.0?os=windows -> bucket1/artifact3/1.0?os=windows&arch=all -> Error 404
-        it('should get the artifact 3 with version 1.0 and metadata os=windows', async () => {
+        step('should get the artifact 3 with version 1.0 and metadata os=windows', async () => {
             return await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact3/1.0?os=windows')
                 .accept('application/zip')
@@ -458,7 +492,7 @@ describe('HTTPServer', async () => {
         });
 
         // get zip bucket1/artifact3/1.0?os=all -> bucket1/artifact3/1.0?os=all&arch=all -> Error 404
-        it('should get the artifact 3 with version 1.0 and metadata os=all', async () => {
+        step('should get the artifact 3 with version 1.0 and metadata os=all', async () => {
             return await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact3/1.0?os=all')
                 .accept('application/zip')
@@ -470,7 +504,7 @@ describe('HTTPServer', async () => {
 
     describe('get /buckets/:bucketName/artifacts/:artifactName/:version? (application/json)', async () => {
         // get bucket1/artifact1 -> [bucket1/artifact1/1.0, bucket1/artifact1/2.0]
-        it('should get all artifacts 1 without specifying a version', async () => {
+        step('should get all artifacts 1 without specifying a version', async () => {
             const result = await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact1')
                 .accept('application/json')
@@ -502,7 +536,7 @@ describe('HTTPServer', async () => {
         });
 
         // get bucket1/artifact2 -> Error 404
-        it('should not get the artifact 2', async () => {
+        step('should not get the artifact 2', async () => {
             return await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact2')
                 .accept('application/zip')
@@ -512,7 +546,7 @@ describe('HTTPServer', async () => {
         });
 
         // get bucket1/artifact1/latest -> [ bucket1/artifact1/2.0, bucket1/artifact1/1.0 ]
-        it('should get the latest artifacts 1', async () => {
+        step('should get the latest artifacts 1', async () => {
             const result = await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact1/latest')
                 .accept('application/json')
@@ -544,7 +578,7 @@ describe('HTTPServer', async () => {
         });
 
         // get bucket1/artifact1/oldest -> [ bucket1/artifact1/1.0, bucket1/artifact1/2.0 ]
-        it('should get the oldest artifacts 1', async () => {
+        step('should get the oldest artifacts 1', async () => {
             const result = await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact1/oldest')
                 .accept('application/json')
@@ -576,7 +610,7 @@ describe('HTTPServer', async () => {
         });
 
         // get bucket1/artifact1/1.0 -> [ bucket1/artifact1/1.0 ]
-        it('should get the artifacts 1 with version 1.0', async () => {
+        step('should get the artifacts 1 with version 1.0', async () => {
             const result = await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact1/1.0')
                 .accept('application/json')
@@ -597,7 +631,7 @@ describe('HTTPServer', async () => {
         });
 
         // get bucket1/artifact1/2.0 -> [ bucket1/artifact1/2.0 ]
-        it('should get the artifacts 1 with version 2.0', async () => {
+        step('should get the artifacts 1 with version 2.0', async () => {
             const result = await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact1/2.0')
                 .accept('application/json')
@@ -618,7 +652,7 @@ describe('HTTPServer', async () => {
         });
 
         // get bucket1/artifact1/3.0 -> []
-        it('should not get artifacts 1 with version 3.0', async () => {
+        step('should not get artifacts 1 with version 3.0', async () => {
             const result = await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact1/3.0')
                 .accept('application/json')
@@ -635,7 +669,7 @@ describe('HTTPServer', async () => {
         });
 
         // get bucket1/artifact3/1.0 -> [ bucket1/artifact3/1.0?os=linux&arch=all, bucket1/artifact3/1.0?os=linux&arch=x86, bucket1/artifact3/1.0?os=x86&arch=all, bucket1/artifact3/1.0?os=macos&arch=x86 ]
-        it('should get the artifacts 3 with version 1.0', async () => {
+        step('should get the artifacts 3 with version 1.0', async () => {
             const result = await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact3/1.0')
                 .accept('application/json')
@@ -689,7 +723,7 @@ describe('HTTPServer', async () => {
         });
 
         // get bucket1/artifact3/1.0?os=linux -> [ bucket1/artifact3/1.0?os=linux&arch=all, bucket1/artifact3/1.0?os=linux&arch=x86 ]
-        it('should get the artifacts 3 with version 1.0 and metadata os=linux', async () => {
+        step('should get the artifacts 3 with version 1.0 and metadata os=linux', async () => {
             const result = await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact3/1.0?os=linux')
                 .accept('application/json')
@@ -721,7 +755,7 @@ describe('HTTPServer', async () => {
         });
 
         // get bucket1/artifact3/1.0?os=linux&arch=x86 -> [ bucket1/artifact3/1.0?os=linux&arch=x86 ]
-        it('should get the artifacts 3 with version 1.0 and metadata os=linux and arch=x86', async () => {
+        step('should get the artifacts 3 with version 1.0 and metadata os=linux and arch=x86', async () => {
             const result = await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact3/1.0?os=linux&arch=x86')
                 .accept('application/json')
@@ -742,7 +776,7 @@ describe('HTTPServer', async () => {
         });
 
         // get bucket1/artifact3/1.0?os=macos -> [ bucket1/artifact3/1.0?os=macos&arch=all ]
-        it('should get the artifacts 3 with version 1.0 and metadata os=macos', async () => {
+        step('should get the artifacts 3 with version 1.0 and metadata os=macos', async () => {
             const result = await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact3/1.0?os=macos')
                 .accept('application/json')
@@ -763,7 +797,7 @@ describe('HTTPServer', async () => {
         });
 
         // get bucket1/artifact3/1.0?os=macos&arch=all -> [ bucket1/artifact3/1.0?os=macos&arch=all ]
-        it('should get the artifacts 3 with version 1.0 and metadata os=macos and arch=all', async () => {
+        step('should get the artifacts 3 with version 1.0 and metadata os=macos and arch=all', async () => {
             const result = await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact3/1.0?os=macos&arch=all')
                 .accept('application/json')
@@ -784,7 +818,7 @@ describe('HTTPServer', async () => {
         });
 
         // get bucket1/artifact3/1.0?os=latest -> [ bucket1/artifact3/1.0?os=linux&arch=all, bucket1/artifact3/1.0?os=linux&arch=x86, bucket1/artifact3/1.0?os=x86&arch=all, bucket1/artifact3/1.0?os=macos&arch=x86 ]
-        it('should get the artifacts 3 with version 1.0 and metadata os=latest', async () => {
+        step('should get the artifacts 3 with version 1.0 and metadata os=latest', async () => {
             const result = await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact3/1.0?os=latest')
                 .accept('application/json')
@@ -839,7 +873,7 @@ describe('HTTPServer', async () => {
         });
 
         // get bucket1/artifact3/1.0?os=windows -> [ bucket1/artifact3/1.0?os=windows&arch=x86 ]
-        it('should get the artifacts 3 with version 1.0 and metadata os=windows and arch=x86', async () => {
+        step('should get the artifacts 3 with version 1.0 and metadata os=windows and arch=x86', async () => {
             const result = await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact3/1.0?os=windows')
                 .accept('application/json')
@@ -860,7 +894,7 @@ describe('HTTPServer', async () => {
         });
 
         // get bucket1/artifact3/1.0?os=all -> []
-        it('should not get the artifacts 3 with os=all', async () => {
+        step('should not get the artifacts 3 with os=all', async () => {
             const result = await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact1/3.0')
                 .accept('application/json')
