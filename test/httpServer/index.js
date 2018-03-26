@@ -7,10 +7,18 @@ const DB = require('../../lib/db');
 const Bucket = require('../../lib/bucket');
 const Artifact = require('../../lib/artifact');
 
-const Mongoose = require('mongoose').Mongoose;
-const mongoose = new Mongoose();
-const Mockgoose = require('mockgoose').Mockgoose;
-const mockgoose = new Mockgoose(mongoose);
+const EMBEDDED_MONGO = false;
+
+let Mongoose = null;
+let mongoose = null;
+let Mockgoose = null;
+let mockgoose = null;
+if (EMBEDDED_MONGO) {
+    Mongoose = require('mongoose').Mongoose;
+    mongoose = new Mongoose();
+    Mockgoose = require('mockgoose').Mockgoose;
+    mockgoose = new Mockgoose(mongoose);
+}
 
 /*
 Test map
@@ -71,6 +79,7 @@ get /buckets/:bucketName/artifacts/:artifactName/:version? (application/json)
     get bucket1/artifact3/1.0?os=latest -> [ bucket1/artifact3/1.0?os=linux&arch=all, bucket1/artifact3/1.0?os=linux&arch=x86, bucket1/artifact3/1.0?os=x86&arch=all, bucket1/artifact3/1.0?os=macos&arch=x86 ]
     get bucket1/artifact3/1.0?os=windows -> [ bucket1/artifact3/1.0?os=windows&arch=x86 ]
     get bucket1/artifact3/1.0?os=all -> []
+    get bucket1/artifacts -> [6 items]
 
 delete /buckets/:bucketName/artifacts/:artifactName/:version?
     delete bucket1/artifact1 -> [bucket1/artifact1/1.0, bucket1/artifact1/2.0]
@@ -84,7 +93,7 @@ describe('HTTPServer', async () => {
     let context = {};
 
     const createContext = async () => {
-        await mockgoose.prepareStorage();
+        if (EMBEDDED_MONGO) await mockgoose.prepareStorage();
         const dbService = new DB('test/data/config.json');
         const config = await dbService.config.getConfig();
         config.storageDB = 'test/data/storage';
@@ -111,9 +120,11 @@ describe('HTTPServer', async () => {
 
     after(async () => {
         await deleteContext(context);
-        await mockgoose.helper.reset();
-        await mongoose.disconnect();
-        mockgoose.mongodHelper.mongoBin.childProcess.kill('SIGTERM');
+        if (EMBEDDED_MONGO) {
+            await mockgoose.helper.reset();
+            await mongoose.disconnect();
+            mockgoose.mongodHelper.mongoBin.childProcess.kill('SIGTERM');
+        }
     });
 
     describe('get /ping', async () => {
@@ -901,6 +912,16 @@ describe('HTTPServer', async () => {
                 .expect(200);
             should.exist(result.body);
             result.body.should.be.an('array').and.to.have.lengthOf(0);
+        });
+
+        // get bucket1/artifacts -> [6]
+        step('should get all artifacts from bucket1', async () => {
+            const result = await supertest(context.server.app)
+                .get('/buckets/bucket1/artifacts')
+                .accept('application/json')
+                .expect(200);
+            should.exist(result.body);
+            result.body.should.be.an('array').and.to.have.lengthOf(6);
         });
     });
 
