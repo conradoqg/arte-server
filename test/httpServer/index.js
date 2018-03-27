@@ -7,7 +7,7 @@ const DB = require('../../lib/db');
 const Bucket = require('../../lib/bucket');
 const Artifact = require('../../lib/artifact');
 
-const EMBEDDED_MONGO = false;
+const EMBEDDED_MONGO = true;
 
 let Mongoose = null;
 let mongoose = null;
@@ -106,7 +106,7 @@ describe('HTTPServer', async () => {
         return {
             server,
             dbService
-        };
+        };        
     };
 
     const deleteContext = async (context) => {
@@ -154,6 +154,18 @@ describe('HTTPServer', async () => {
                 .post('/buckets')
                 .send({
                     name: 'bucket1',
+                    retentionPolicy: [{
+                        filter: {
+                            name: 'artifact',
+                            version: '1.0',
+                            metadata: {
+                                os: 'all'
+                            }
+                        },
+                        totalSize: '1MB',
+                        fileCount: 5,
+                        age: '15 days'
+                    }],
                     template: {
                         fileName: '{name}-{version}-{tag}-{os}-{arch}-{language}-{country}-{customVersion}.zip',
                         properties: {
@@ -676,6 +688,7 @@ describe('HTTPServer', async () => {
         step('should not get artifact 1 using invalid metadata', async () => {
             return await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact1/1.0?arch=x2')
+                .accept('application/zip')                
                 .expect(400);
         });
 

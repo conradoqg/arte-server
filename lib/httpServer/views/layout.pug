@@ -1,0 +1,52 @@
+doctype html
+html(lang="en")
+    head
+        title Arte - #{pageTitle}
+        meta(name="viewport", content="width=device-width, initial-scale=1")
+        link(rel="stylesheet", href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.6.2/css/bulma.min.css")        
+        script(src="https://use.fontawesome.com/releases/v5.0.0/js/all.js", defer)        
+        style(type='text/css').
+    body
+        nav.navbar.is-info
+            .container
+                .navbar-menu.is-active
+                    .navbar-brand
+                        a.navbar-item(href="https://bulma.io")
+                            img(src="/public/arte.png", alt="Arte", width="28", height="28")
+                            .title.has-text-white.is-4 Arte                            
+                    .navbar-start                                                
+                    .navbar-end                     
+                        a.navbar-item(href="/login", class=`${pageTitle=='Option' ? 'is-active' : ''}`) Login                        
+        block content
+        script.
+            function searchArtifact(e) {
+                var bucketSelect = document.getElementById('bucketSelect');
+                var bucket = bucketSelect[bucketSelect.selectedIndex].value;
+                var artifact = document.getElementById('artifactTextbox').value;
+                var version = document.getElementById('versionTextbox').value;
+                var metadata = document.getElementById('metadataTextbox').value;
+
+                var url = '';
+
+                url = '/buckets/' + bucket + '/artifacts';
+
+                if (artifact) url += '/' + artifact;
+                if (version) url+= '/' + version;
+                if (metadata) url += '?' + metadata.replace(/,/g, '&');
+                window.location.href = url;
+                e.preventDefault();
+            }
+
+            function updateFormState(e) {
+                var artifactTextbox = document.getElementById('artifactTextbox');
+                var version = document.getElementById('versionTextbox');
+                var metadata = document.getElementById('metadataTextbox');
+
+                if (artifactTextbox.value.length > 0) {
+                    version.disabled = false;
+                    metadata.disabled = false;
+                } else {
+                    version.disabled = true;
+                    metadata.disabled = true;
+                }
+            }
