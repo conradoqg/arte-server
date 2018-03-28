@@ -26,27 +26,12 @@ html(lang="en")
                 var version = document.getElementById('versionTextbox').value;
                 var metadata = document.getElementById('metadataTextbox').value;
 
-                var url = '';
+                var url = '/artifacts/search?partial=true';                
 
-                url = '/buckets/' + bucket + '/artifacts';
-
-                if (artifact) url += '/' + artifact;
-                if (version) url+= '/' + version;
-                if (metadata) url += '?' + metadata.replace(/,/g, '&');
+                if (bucket) url += '&bucket=' + bucket;
+                if (artifact) url += '&artifact=' + artifact;
+                if (version) url+= '&version=' + version;
+                if (metadata) url += '&' + metadata.replace(/,/g, '&');
                 window.location.href = url;
                 e.preventDefault();
-            }
-
-            function updateFormState(e) {
-                var artifactTextbox = document.getElementById('artifactTextbox');
-                var version = document.getElementById('versionTextbox');
-                var metadata = document.getElementById('metadataTextbox');
-
-                if (artifactTextbox.value.length > 0) {
-                    version.disabled = false;
-                    metadata.disabled = false;
-                } else {
-                    version.disabled = true;
-                    metadata.disabled = true;
-                }
             }

@@ -10,8 +10,9 @@ block content
                     p.control
                         .select
                             select#bucketSelect
+                                option(value='' selected=(!bucketName ? true : false))
                                 each bucket in buckets
-                                    option(value=`${bucket.name}` selected=(bucketName == bucket.name ? true : false)) #{bucket.name}                            
+                                    option(value=`${bucket && bucket.name}` selected=(bucket && bucketName == bucket.name ? true : false)) #{bucket.name}                            
                     .field-label.is-normal
                         label.label Artifact
                     p.control.is-expanded
@@ -19,11 +20,11 @@ block content
                     .field-label.is-normal
                         label.label Version
                     p.control
-                        input.input(id='versionTextbox', type="text", placeholder="1.0", value=`${version ? version : ''}`, disabled=(artifactName ? false : true))
+                        input.input(id='versionTextbox', type="text", placeholder="1.0", value=`${version ? version : ''}`)
                     .field-label.is-normal
                         label.label Metadata
                     p.control
-                        input.input(id='metadataTextbox', type="text", placeholder="os=linux, arch=x86", value=`${metadata && Object.keys(metadata).length > 0 ? formatters.metadataObjectToList(metadata) : ''}`, disabled=(artifactName ? false : true))
+                        input.input(id='metadataTextbox', type="text", placeholder="os=linux, arch=x86", value=`${metadata && Object.keys(metadata).length > 0 ? formatters.metadataObjectToList(metadata) : ''}`)
                     p.control
                         input.button.is-primary(type='submit', value='Search') 
             if !message
@@ -31,20 +32,24 @@ block content
                 table.table.is-fullwidth
                     thead
                         tr
-                            th Name
+                            th Bucket
+                            th Artifact
                             th Version
                             th File Size
                             th Last Update
                             th Metadata
+                            th
                     tbody
                         each artifact in artifacts
                             tr
-                                td
-                                    a(href=`${formatters.buildURL(artifact)}&download`) #{artifact.name}
+                                td #{artifact.bucket}
+                                td #{artifact.name}
                                 td #{artifact.version}
                                 td #{formatters.filesizeToHuman(artifact.fileSize)}
                                 td #{formatters.dateToMomentAgo(artifact.lastUpdate)}
-                                td #{formatters.metadataObjectToList(artifact.metadata)}                
+                                td #{formatters.metadataObjectToList(artifact.metadata)}    
+                                td
+                                    a(href=`${formatters.buildURL(artifact)}&download`) download
                 // nav.pagination.is-centered(role="navigation", aria-label="pagination")                
                     ul.pagination-list
                         li                    
