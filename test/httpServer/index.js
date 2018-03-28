@@ -51,8 +51,7 @@ get /buckets/:bucketName/artifacts/:artifactName/:version? (application/zip)
     get zip bucket1/artifact1/oldest -> bucket1/artifact1/1.0?os=all&arch=all
     get zip bucket1/artifact1/1.0 -> bucket1/artifact1/1.0?os=all&arch=all
     get zip bucket1/artifact1/2.0 -> bucket1/artifact1/2.0?os=all&arch=all
-    get zip bucket1/artifact1/3.0 -> Error 404
-    get bucket1/artifact1/1.0?arch=x2 -> Error 400
+    get zip bucket1/artifact1/3.0 -> Error 404    
     get zip bucket1/artifact2 -> Error 404
     get zip bucket1/artifact2/latest -> Error 404
     get zip bucket1/artifact2/oldest -> Error 404
@@ -63,7 +62,7 @@ get /buckets/:bucketName/artifacts/:artifactName/:version? (application/zip)
     get zip bucket1/artifact3/1.0?os=windows -> bucket1/artifact3/1.0?os=windows&arch=all -> Error 404
     get zip bucket1/artifact3/1.0?os=all -> bucket1/artifact3/1.0?os=all&arch=all -> Error 404
 
-get /buckets/:bucketName/artifacts/:artifactName/:version? (application/json)
+get /artifacts/search
     get bucket1/artifact1 -> [bucket1/artifact1/1.0, bucket1/artifact1/2.0]
     get bucket1/artifact2 -> Error 404
     get bucket1/artifact1/latest -> [ bucket1/artifact1/2.0, bucket1/artifact1/1.0 ]
@@ -71,6 +70,7 @@ get /buckets/:bucketName/artifacts/:artifactName/:version? (application/json)
     get bucket1/artifact1/1.0 -> [ bucket1/artifact1/1.0 ]
     get bucket1/artifact1/2.0 -> [ bucket1/artifact1/2.0 ]
     get bucket1/artifact1/3.0 -> []
+    get bucket1/artifact1/1.0?arch=x2 -> Error 400
     get bucket1/artifact3/1.0 -> [ bucket1/artifact3/1.0?os=linux&arch=all, bucket1/artifact3/1.0?os=linux&arch=x86, bucket1/artifact3/1.0?os=x86&arch=all, bucket1/artifact3/1.0?os=macos&arch=x86 ]
     get bucket1/artifact3/1.0?os=linux -> [ bucket1/artifact3/1.0?os=linux&arch=all, bucket1/artifact3/1.0?os=linux&arch=x86 ]
     get bucket1/artifact3/1.0?os=linux&arch=x86 -> [ bucket1/artifact3/1.0?os=linux&arch=x86 ]
@@ -106,7 +106,7 @@ describe('HTTPServer', async () => {
         return {
             server,
             dbService
-        };        
+        };
     };
 
     const deleteContext = async (context) => {
@@ -525,11 +525,11 @@ describe('HTTPServer', async () => {
         });
     });
 
-    describe('get /buckets/:bucketName/artifacts/:artifactName/:version? (application/json)', async () => {
+    describe('get /artifacts/search', async () => {
         // get bucket1/artifact1 -> [bucket1/artifact1/1.0, bucket1/artifact1/2.0]
         step('should get all artifacts 1 without specifying a version', async () => {
             const result = await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact1')
+                .get('/artifacts/search?bucket=bucket1&artifact=artifact1')
                 .accept('application/json')
                 .expect(200);
             should.exist(result.body);
@@ -558,20 +558,18 @@ describe('HTTPServer', async () => {
                 });
         });
 
-        // get bucket1/artifact2 -> Error 404
+        // get bucket1/artifact2 -> []
         step('should not get the artifact 2', async () => {
             return await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact2')
-                .accept('application/zip')
-                .buffer(true)
-                .responseType('blob')
-                .expect(404);
+                .get('/artifacts/search?bucket=bucket1&artifact=artifact2')
+                .accept('application/json')
+                .expect(200);
         });
 
         // get bucket1/artifact1/latest -> [ bucket1/artifact1/2.0, bucket1/artifact1/1.0 ]
         step('should get the latest artifacts 1', async () => {
             const result = await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact1/latest')
+                .get('/artifacts/search?bucket=bucket1&artifact=artifact1&version=latest')
                 .accept('application/json')
                 .expect(200);
             should.exist(result.body);
@@ -603,7 +601,7 @@ describe('HTTPServer', async () => {
         // get bucket1/artifact1/oldest -> [ bucket1/artifact1/1.0, bucket1/artifact1/2.0 ]
         step('should get the oldest artifacts 1', async () => {
             const result = await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact1/oldest')
+                .get('/artifacts/search?bucket=bucket1&artifact=artifact1&version=oldest')
                 .accept('application/json')
                 .expect(200);
             should.exist(result.body);
@@ -635,7 +633,7 @@ describe('HTTPServer', async () => {
         // get bucket1/artifact1/1.0 -> [ bucket1/artifact1/1.0 ]
         step('should get the artifacts 1 with version 1.0', async () => {
             const result = await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact1/1.0')
+                .get('/artifacts/search?bucket=bucket1&artifact=artifact1&version=1.0')
                 .accept('application/json')
                 .expect(200);
             should.exist(result.body);
@@ -656,7 +654,7 @@ describe('HTTPServer', async () => {
         // get bucket1/artifact1/2.0 -> [ bucket1/artifact1/2.0 ]
         step('should get the artifacts 1 with version 2.0', async () => {
             const result = await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact1/2.0')
+                .get('/artifacts/search?bucket=bucket1&artifact=artifact1&version=2.0')
                 .accept('application/json')
                 .expect(200);
             should.exist(result.body);
@@ -677,7 +675,7 @@ describe('HTTPServer', async () => {
         // get bucket1/artifact1/3.0 -> []
         step('should not get artifacts 1 with version 3.0', async () => {
             const result = await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact1/3.0')
+                .get('/artifacts/search?bucket=bucket1&artifact=artifact1&version=3.0')
                 .accept('application/json')
                 .expect(200);
             should.exist(result.body);
@@ -686,16 +684,18 @@ describe('HTTPServer', async () => {
 
         // get bucket1/artifact1/1.0?arch=x2 -> Error 400
         step('should not get artifact 1 using invalid metadata', async () => {
-            return await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact1/1.0?arch=x2')
-                .accept('application/zip')                
-                .expect(400);
+            const result = await supertest(context.server.app)
+                .get('/artifacts/search?bucket=bucket1&artifact=artifact1&version=1.0&arch=x2')
+                .accept('application/json')
+                .expect(200);
+            should.exist(result.body);
+            result.body.should.be.an('array').and.to.have.lengthOf(0);
         });
 
         // get bucket1/artifact3/1.0 -> [ bucket1/artifact3/1.0?os=linux&arch=all, bucket1/artifact3/1.0?os=linux&arch=x86, bucket1/artifact3/1.0?os=x86&arch=all, bucket1/artifact3/1.0?os=macos&arch=x86 ]
         step('should get the artifacts 3 with version 1.0', async () => {
             const result = await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact3/1.0')
+                .get('/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0')
                 .accept('application/json')
                 .expect(200);
             should.exist(result.body);
@@ -749,7 +749,7 @@ describe('HTTPServer', async () => {
         // get bucket1/artifact3/1.0?os=linux -> [ bucket1/artifact3/1.0?os=linux&arch=all, bucket1/artifact3/1.0?os=linux&arch=x86 ]
         step('should get the artifacts 3 with version 1.0 and metadata os=linux', async () => {
             const result = await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact3/1.0?os=linux')
+                .get('/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0&os=linux')
                 .accept('application/json')
                 .expect(200);
             should.exist(result.body);
@@ -802,7 +802,7 @@ describe('HTTPServer', async () => {
         // get bucket1/artifact3/1.0?os=macos -> [ bucket1/artifact3/1.0?os=macos&arch=all ]
         step('should get the artifacts 3 with version 1.0 and metadata os=macos', async () => {
             const result = await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact3/1.0?os=macos')
+                .get('/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0&os=macos')
                 .accept('application/json')
                 .expect(200);
             should.exist(result.body);
@@ -823,7 +823,7 @@ describe('HTTPServer', async () => {
         // get bucket1/artifact3/1.0?os=macos&arch=all -> [ bucket1/artifact3/1.0?os=macos&arch=all ]
         step('should get the artifacts 3 with version 1.0 and metadata os=macos and arch=all', async () => {
             const result = await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact3/1.0?os=macos&arch=all')
+                .get('/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0&os=macos&arch=all')
                 .accept('application/json')
                 .expect(200);
             should.exist(result.body);
@@ -844,7 +844,7 @@ describe('HTTPServer', async () => {
         // get bucket1/artifact3/1.0?os=latest -> [ bucket1/artifact3/1.0?os=linux&arch=all, bucket1/artifact3/1.0?os=linux&arch=x86, bucket1/artifact3/1.0?os=x86&arch=all, bucket1/artifact3/1.0?os=macos&arch=x86 ]
         step('should get the artifacts 3 with version 1.0 and metadata os=latest', async () => {
             const result = await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact3/1.0?os=latest')
+                .get('/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0&os=latest')
                 .accept('application/json')
                 .expect(200);
             should.exist(result.body);
@@ -899,7 +899,7 @@ describe('HTTPServer', async () => {
         // get bucket1/artifact3/1.0?os=windows -> [ bucket1/artifact3/1.0?os=windows&arch=x86 ]
         step('should get the artifacts 3 with version 1.0 and metadata os=windows and arch=x86', async () => {
             const result = await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact3/1.0?os=windows')
+                .get('/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0&os=windows')
                 .accept('application/json')
                 .expect(200);
             should.exist(result.body);
@@ -920,7 +920,7 @@ describe('HTTPServer', async () => {
         // get bucket1/artifact3/1.0?os=all -> []
         step('should not get the artifacts 3 with os=all', async () => {
             const result = await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact1/3.0')
+                .get('/artifacts/search?bucket=bucket1&artifact=artifact1&version=3.0')
                 .accept('application/json')
                 .expect(200);
             should.exist(result.body);
@@ -930,7 +930,7 @@ describe('HTTPServer', async () => {
         // get bucket1/artifacts -> [6]
         step('should get all artifacts from bucket1', async () => {
             const result = await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts')
+                .get('/artifacts/search?bucket=bucket1')
                 .accept('application/json')
                 .expect(200);
             should.exist(result.body);
