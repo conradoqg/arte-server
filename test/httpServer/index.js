@@ -781,7 +781,7 @@ describe('HTTPServer', async () => {
         // get bucket1/artifact3/1.0?os=linux&arch=x86 -> [ bucket1/artifact3/1.0?os=linux&arch=x86 ]
         step('should get the artifacts 3 with version 1.0 and metadata os=linux and arch=x86', async () => {
             const result = await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact3/1.0?os=linux&arch=x86')
+                .get('/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0&os=linux&arch=x86')
                 .accept('application/json')
                 .expect(200);
             should.exist(result.body);
@@ -939,25 +939,14 @@ describe('HTTPServer', async () => {
     });
 
     describe('delete /buckets/:bucketName/artifacts/:artifactName/:version?', async () => {
-        // delete bucket1/artifact1 -> [bucket1/artifact1/1.0, bucket1/artifact1/2.0]
-        step('should delete all artifacts 1 without specifying a version', async () => {
+        // delete bucket1/artifact1/1.0 -> bucket1/artifact1/1.0
+        step('should delete  artifacts 1 version 1.0', async () => {
             const deleteResult = await supertest(context.server.app)
-                .delete('/buckets/bucket1/artifacts/artifact1')
+                .delete('/buckets/bucket1/artifacts/artifact1/1.0')
                 .expect(200);
             should.exist(deleteResult.body);
-            deleteResult.body.should.be.an('array').and.to.have.lengthOf(2);
-            deleteResult.body[0].should.be.deep.equal(
-                {
-                    bucket: 'bucket1',
-                    name: 'artifact1',
-                    version: '2.0',
-                    normalizedVersion: '0000000002.0000000000',
-                    path: path.normalize('bucket1/artifact1-2.0-undefined-all-all-all-all-none.zip'),
-                    fileSize: 561,
-                    lastUpdate: deleteResult.body[0].lastUpdate,
-                    metadata: { arch: 'all', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
-                });
-            deleteResult.body[1].should.be.deep.equal(
+            deleteResult.body.should.be.an('object');
+            deleteResult.body.should.be.deep.equal(
                 {
                     bucket: 'bucket1',
                     name: 'artifact1',
@@ -965,16 +954,16 @@ describe('HTTPServer', async () => {
                     normalizedVersion: '0000000001.0000000000',
                     path: path.normalize('bucket1/artifact1-1.0-undefined-all-all-all-all-none.zip'),
                     fileSize: 561,
-                    lastUpdate: deleteResult.body[1].lastUpdate,
+                    lastUpdate: deleteResult.body.lastUpdate,
                     metadata: { arch: 'all', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
                 });
 
             const getResult = await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact1')
+                .get('/artifacts/search?bucket=bucket1&artifact=artifact1')
                 .accept('application/json')
                 .expect(200);
             should.exist(getResult.body);
-            getResult.body.should.be.an('array').and.to.have.lengthOf(0);
+            getResult.body.should.be.an('array').and.to.have.lengthOf(1);
         });
     });
 
@@ -988,6 +977,13 @@ describe('HTTPServer', async () => {
             should.exist(result.body);
             result.body.should.be.an('object');
             result.body.version.should.not.be.empty;
+        });
+
+        // get /throw should throw
+        step('should throw', async () => {
+            await supertest(context.server.app)
+                .get('/throw')
+                .expect(500);
         });
     });
 });
