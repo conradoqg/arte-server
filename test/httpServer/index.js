@@ -29,6 +29,9 @@ get /ping
 get /buckets
     get buckets -> []
 
+get /throw
+    get throw -> Error 500
+
 post /buckets    
     post bucket1 -> bucket1
 
@@ -85,7 +88,7 @@ delete /buckets/:bucketName/artifacts/:artifactName/:version?
     delete bucket1/artifact1 -> [bucket1/artifact1/1.0, bucket1/artifact1/2.0]
 
 features
-    put bucket1/artifact4/{empty} -> bucket1/artifact4/{now}
+    put bucket1/artifact4/{empty} -> bucket1/artifact4/{now}    
 */
 
 describe('HTTPServer', async () => {
@@ -133,6 +136,15 @@ describe('HTTPServer', async () => {
             return await supertest(context.server.app)
                 .get('/ping')
                 .expect(200);
+        });
+    });
+
+    describe('get /throw', async () => {
+        // get throw -> Error 500
+        step('should throw', async () => {
+            await supertest(context.server.app)
+                .get('/throw')
+                .expect(500);
         });
     });
 
@@ -977,13 +989,6 @@ describe('HTTPServer', async () => {
             should.exist(result.body);
             result.body.should.be.an('object');
             result.body.version.should.not.be.empty;
-        });
-
-        // get /throw should throw
-        step('should throw', async () => {
-            await supertest(context.server.app)
-                .get('/throw')
-                .expect(500);
         });
     });
 });
