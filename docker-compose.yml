@@ -1,0 +1,16 @@
+version: '3.6'
+services:
+  arte-server:
+    build: .
+    ports:
+     - "80:80"
+     - "9229:9229"
+    volumes:
+     - ./data:/arte-server/data
+    environment:
+     - HOST=0.0.0.0
+     - MONGO_URL=mongodb://mongo/arte-server
+  mongo:
+    image: "mongo:3.4-jessie"
+    volumes:
+      - ./data/db:/data/db
