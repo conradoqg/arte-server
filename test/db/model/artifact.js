@@ -7,9 +7,8 @@ describe('DB Model', async () => {
         const isSubset = artifact.methods.isSubset.bind(
             {
                 bucket: 'bucket1',
-                artifact: 'artifact1'
+                name: 'artifact1'
             });
-
         isSubset({
             bucket: 'bucket1',
             artifact: 'artifact1'
@@ -20,7 +19,7 @@ describe('DB Model', async () => {
         const isSubset = artifact.methods.isSubset.bind(
             {
                 bucket: 'bucket1',
-                artifact: 'artifact1'
+                name: 'artifact1'
             });
 
         isSubset({            
@@ -32,7 +31,7 @@ describe('DB Model', async () => {
         const isSubset = artifact.methods.isSubset.bind(
             {
                 bucket: 'bucket1',
-                artifact: 'artifact1'
+                name: 'artifact1'
             });
 
         isSubset({            
@@ -44,7 +43,7 @@ describe('DB Model', async () => {
         const isSubset = artifact.methods.isSubset.bind(
             {
                 bucket: 'bucket1',
-                artifact: 'artifact1'
+                name: 'artifact1'
             });
 
         isSubset({
@@ -57,7 +56,7 @@ describe('DB Model', async () => {
         const isSubset = artifact.methods.isSubset.bind(
             {
                 bucket: 'bucket1',
-                artifact: 'artifact1'
+                name: 'artifact1'
             });
 
         isSubset({
@@ -69,7 +68,7 @@ describe('DB Model', async () => {
     it('should not match a simple superset (inexistent property)', async () => {
         const isSubset = artifact.methods.isSubset.bind(
             {
-                artifact: 'artifact1'
+                name: 'artifact1'
             });
 
         isSubset({
@@ -82,7 +81,7 @@ describe('DB Model', async () => {
         const isSubset = artifact.methods.isSubset.bind(
             {
                 bucket: 'bucket1',
-                artifact: 'artifact1'
+                name: 'artifact1'
             });
 
         isSubset({
@@ -94,7 +93,7 @@ describe('DB Model', async () => {
         const isSubset = artifact.methods.isSubset.bind(
             {
                 bucket: 'bucket1',
-                artifact: 'artifact1',
+                name: 'artifact1',
                 metadata: {
                     os: 'all'
                 }
@@ -113,7 +112,7 @@ describe('DB Model', async () => {
         const isSubset = artifact.methods.isSubset.bind(
             {
                 bucket: 'bucket1',
-                artifact: 'artifact1',
+                name: 'artifact1',
                 metadata: {
                     arch: 'all'
                 }
@@ -132,7 +131,7 @@ describe('DB Model', async () => {
         const isSubset = artifact.methods.isSubset.bind(
             {
                 bucket: 'bucket1',
-                artifact: 'artifact1'                
+                name: 'artifact1'                
             });
 
         isSubset({
