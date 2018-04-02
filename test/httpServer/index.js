@@ -3,6 +3,7 @@ const should = require('chai').should();
 const supertest = require('supertest');
 const path = require('path');
 const rewire = require('rewire');
+const Config = require('../../lib/config');
 const HTTPServer = require('../../lib/httpServer');
 const DB = require('../../lib/db');
 const Bucket = require('../../lib/bucket');
@@ -103,15 +104,12 @@ describe('HTTPServer', async () => {
 
     const createContext = async () => {
         if (EMBEDDED_MONGO) await mockgoose.prepareStorage();
-        const dbService = new DB('test/data/config.json');
-        const config = await dbService.config.getConfig();
-        config.storageDB = 'test/data/storage';
-        config.metadataDB = 'mongodb://localhost/test';
-        await dbService.config.updateConfig(config);
+        const config = new Config('mongodb://localhost/test', 'test/data/storage');
+        const dbService = new DB(config);
         await dbService.connect();
         const bucketService = new Bucket(dbService.storage, dbService.metadata);
         const webhookService = new Webhook(dbService.metadata);
-        const artifactServer = new Artifact(dbService.config, dbService.storage, dbService.metadata, webhookService);
+        const artifactServer = new Artifact(dbService.storage, dbService.metadata, webhookService);
         const server = new HTTPServer(dbService, bucketService, artifactServer, webhookService);
         return {
             server,
