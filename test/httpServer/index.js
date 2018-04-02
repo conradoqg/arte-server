@@ -2,10 +2,12 @@ const step = require('mocha-steps').step;
 const should = require('chai').should();
 const supertest = require('supertest');
 const path = require('path');
+const rewire = require('rewire');
 const HTTPServer = require('../../lib/httpServer');
 const DB = require('../../lib/db');
 const Bucket = require('../../lib/bucket');
 const Artifact = require('../../lib/artifact');
+const Webhook = rewire('../../lib/webhook');
 
 const EMBEDDED_MONGO = true;
 
@@ -87,6 +89,9 @@ get /artifacts/search
 delete /buckets/:bucketName/artifacts/:artifactName/:version?
     delete bucket1/artifact1 -> [bucket1/artifact1/1.0, bucket1/artifact1/2.0]
 
+post /webhook
+    post a webhook -> webhook
+
 features
     put bucket1/artifact4/{empty} -> bucket1/artifact4/{now}    
 */
@@ -103,9 +108,10 @@ describe('HTTPServer', async () => {
         config.metadataDB = 'mongodb://localhost/test';
         await dbService.config.updateConfig(config);
         await dbService.connect();
-        const bucketServer = new Bucket(dbService.storage, dbService.metadata);
-        const artifactServer = new Artifact(dbService.config, dbService.storage, dbService.metadata);
-        const server = new HTTPServer(dbService, bucketServer, artifactServer);
+        const bucketService = new Bucket(dbService.storage, dbService.metadata);
+        const webhookService = new Webhook(dbService.metadata);
+        const artifactServer = new Artifact(dbService.config, dbService.storage, dbService.metadata, webhookService);
+        const server = new HTTPServer(dbService, bucketService, artifactServer, webhookService);
         return {
             server,
             dbService
@@ -976,6 +982,33 @@ describe('HTTPServer', async () => {
                 .expect(200);
             should.exist(getResult.body);
             getResult.body.should.be.an('array').and.to.have.lengthOf(1);
+        });
+    });
+
+    describe('post /webhook', async () => {
+        it('should post a webhook', async () => {
+            let called = false; 
+            
+            Webhook.__set__('webhookCaller', () => called = true);
+
+            const webhookCreationResult = await supertest(context.server.app)
+                .post('/webhooks')
+                .send({
+                    bucket: 'bucket1',
+                    artifact: 'artifact5',
+                    endpoint: 'http://localhost:5673/webhook'
+                })
+                .expect(200);
+            should.exist(webhookCreationResult.body);
+            webhookCreationResult.body.should.be.an('object');
+            webhookCreationResult.body.bucket.should.not.be.empty;
+
+            await supertest(context.server.app)
+                .put('/buckets/bucket1/artifacts/artifact5')
+                .attach('artifact', path.resolve(__dirname, 'file.zip'))
+                .expect(200);
+
+            called.should.be.true;
         });
     });
 
