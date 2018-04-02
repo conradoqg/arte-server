@@ -1,5 +1,4 @@
-const step = require('mocha-steps').step;
-const should = require('chai').should();
+require('chai').should();
 const artifact = require('../../../lib/db/model/artifact');
 
 describe('DB Model', async () => {

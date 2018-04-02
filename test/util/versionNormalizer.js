@@ -1,5 +1,5 @@
+require('chai').should();
 const versionNormalizer = require('../../lib/util/versionNormalizer');
-const should = require('chai').should();
 
 describe('Version normalizer', async () => {
 

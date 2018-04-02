@@ -90,10 +90,11 @@ delete /buckets/:bucketName/artifacts/:artifactName/:version?
     delete bucket1/artifact1 -> [bucket1/artifact1/1.0, bucket1/artifact1/2.0]
 
 post /webhook
-    post a webhook -> webhook
+    post a webhook -> webhook    
 
 features
     put bucket1/artifact4/{empty} -> bucket1/artifact4/{now}    
+    put [/buckets/bucket1/artifacts/artifact5, /buckets/bucket1/artifacts/artifact6] -> Call 1 webhook
 */
 
 describe('HTTPServer', async () => {
@@ -986,11 +987,7 @@ describe('HTTPServer', async () => {
     });
 
     describe('post /webhook', async () => {
-        it('should post a webhook', async () => {
-            let called = false; 
-            
-            Webhook.__set__('webhookCaller', () => called = true);
-
+        step('should post a webhook', async () => {
             const webhookCreationResult = await supertest(context.server.app)
                 .post('/webhooks')
                 .send({
@@ -1002,13 +999,6 @@ describe('HTTPServer', async () => {
             should.exist(webhookCreationResult.body);
             webhookCreationResult.body.should.be.an('object');
             webhookCreationResult.body.bucket.should.not.be.empty;
-
-            await supertest(context.server.app)
-                .put('/buckets/bucket1/artifacts/artifact5')
-                .attach('artifact', path.resolve(__dirname, 'file.zip'))
-                .expect(200);
-
-            called.should.be.true;
         });
     });
 
@@ -1022,6 +1012,25 @@ describe('HTTPServer', async () => {
             should.exist(result.body);
             result.body.should.be.an('object');
             result.body.version.should.not.be.empty;
+        });
+
+        // put [/buckets/bucket1/artifacts/artifact5, /buckets/bucket1/artifacts/artifact6] -> Call 1 webhook
+        step('should call the webhook when posting the correct artifact', async () => {
+            let called = 0;
+
+            Webhook.__set__('webhookCaller', () => called++);
+
+            await supertest(context.server.app)
+                .put('/buckets/bucket1/artifacts/artifact5')
+                .attach('artifact', path.resolve(__dirname, 'file.zip'))
+                .expect(200);
+
+            await supertest(context.server.app)
+                .put('/buckets/bucket1/artifacts/artifact6')
+                .attach('artifact', path.resolve(__dirname, 'file.zip'))
+                .expect(200);
+
+            called.should.be.equal(1);
         });
     });
 });
