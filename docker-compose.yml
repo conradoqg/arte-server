@@ -9,8 +9,13 @@ services:
      - ./data:/arte-server/data
     environment:
      - HOST=0.0.0.0
-     - MONGO_URL=mongodb://mongo/arte-server
+     - MONGO_URL=mongodb://admin:admin@mongo/admin
   mongo:
     image: "mongo:3.4-jessie"
+    ports:
+     - "27018:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin      
+      - MONGO_INITDB_ROOT_PASSWORD=admin
     volumes:
       - ./data/db:/data/db

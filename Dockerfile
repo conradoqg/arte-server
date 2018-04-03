@@ -15,4 +15,4 @@ RUN npm install
 EXPOSE 80
 EXPOSE 9229
 
-ENTRYPOINT forever -c "node --inspect=0.0.0.0:9229" bin/arte-server.js 
+ENTRYPOINT forever --spinSleepTime 5000 --minUptime 1000 -c "node --inspect=0.0.0.0:9229" bin/arte-server.js 
