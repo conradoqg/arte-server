@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "description": "An artifact service to store binary data",
   "homepage": "https://github.com/conradoqg/arte-server",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/conradoqg/arte-server.git"
+  },
   "main": "lib/arte-server.js",
   "bin": {
     "arte-server": "bin/arte-server.js"
