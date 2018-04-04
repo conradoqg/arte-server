@@ -48,8 +48,20 @@ block content
                                 td #{formatters.filesizeToHuman(artifact.fileSize)}
                                 td #{formatters.dateToMomentAgo(artifact.lastUpdate)}
                                 td #{formatters.metadataObjectToList(artifact.metadata)}    
-                                td
-                                    a(href=`${formatters.buildURL(artifact)}`) download
+                                td                                                            
+                                    .buttons
+                                        a.button(href=`${formatters.buildURL(artifact)}`, data-balloon="Download", data-balloon-pos="up") 
+                                            span.icon
+                                                i.fas.fa-download
+                                        a.button.copy(data-clipboard-text=`${formatters.buildCLICommand(req, artifact, 'linux')}`, data-balloon="Click to copy to the clipboard the CLI command for Linux", data-balloon-pos="up", title='CLI link for Linux') 
+                                            span.icon
+                                                i.fab.fa-linux                                              
+                                        a.button.copy(data-clipboard-text=`${formatters.buildCLICommand(req, artifact, 'macos')}`, data-balloon="Click to copy to the clipboard the CLI command for MacOS", data-balloon-pos="up", title='CLI link for MacOS') 
+                                            span.icon
+                                                i.fab.fa-apple                                            
+                                        a.button.copy(data-clipboard-text=`${formatters.buildCLICommand(req, artifact, 'windows')}`, data-balloon="Click to copy to the clipboard the CLI command for Windows", data-balloon-pos="up", title='CLI link for Windows') 
+                                            span.icon
+                                                i.fab.fa-windows
                 // nav.pagination.is-centered(role="navigation", aria-label="pagination")                
                     ul.pagination-list
                         li                    
