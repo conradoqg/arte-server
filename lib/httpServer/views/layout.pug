@@ -5,7 +5,7 @@ html(lang="en")
         meta(name="viewport", content="width=device-width, initial-scale=1")
         link(rel="stylesheet", href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.6.2/css/bulma.min.css")
         link(rel="stylesheet", href="https://cdnjs.cloudflare.com/ajax/libs/balloon-css/0.5.0/balloon.min.css")        
-        script(src="https://use.fontawesome.com/releases/v5.0.0/js/all.js", defer)
+        script(src="https://use.fontawesome.com/releases/v5.0.7/js/all.js", defer)
         script(src="https://cdn.rawgit.com/zenorocha/clipboard.js/master/dist/clipboard.js")
         script(src="https://cdnjs.cloudflare.com/ajax/libs/zepto/1.2.0/zepto.js")                
         style(type='text/css').
@@ -16,11 +16,46 @@ html(lang="en")
                     .navbar-brand
                         a.navbar-item(href="https://bulma.io")
                             img(src="/public/arte.png", alt="Arte", width="28", height="28")
-                            .title.has-text-white.is-4 Arte                            
-                    .navbar-start                                                
-                    .navbar-end                     
-                        a.navbar-item(href="/login", class=`${pageTitle=='Option' ? 'is-active' : ''}`) Login                        
+                            .title.has-text-white.is-4 Arte
         block content
+        section.hero.is-small.is-primary
+            .hero-body
+                .container 
+                    h1.title Get the CLI
+                    p For Linux
+                        .field.has-addons
+                            .control
+                                input.input#cliLinux(size="100", value="curl https://github.com/conradoqg/arte-cli/releases/download/v1.0/arte-cli-linux -L -o arte")
+                            .control
+                                a.button.copy(data-clipboard-target="#cliLinux")
+                                    span.icon
+                                        i.fas.fa-clipboard-list
+                    p For MacOS
+                        .field.has-addons
+                            .control
+                                input.input#cliMacOS(size="100", value="curl https://github.com/conradoqg/arte-cli/releases/download/v1.0/arte-cli-macos -L -o arte")
+                            .control
+                                a.button.copy(data-clipboard-target="#cliMacOS")
+                                    span.icon
+                                        i.fas.fa-clipboard-list
+                    p For Windows (Powershell)
+                        .field.has-addons
+                            .control
+                                input.input#cliWindows(size="100", value="curl https://github.com/conradoqg/arte-cli/releases/download/v1.0/arte-cli-win.exe -OutFile arte.exe")
+                            .control
+                                a.button.copy(data-clipboard-target="#cliWindows")
+                                    span.icon
+                                        i.fas.fa-clipboard-list
+        footer.footer
+            .container
+                .content.has-centered-text
+                    p
+                        strong Arte
+                        span  by
+                        a(href="https://github.com/conradoqg")  Conrado Quilles Gomes
+                        span . The source code is licensed under
+                        a(href="https://github.com/conradoqg/arte-server/blob/master/LICENSE.md")  MIT
+                        span . 
         script.
             Zepto(function($){
                 new ClipboardJS('.copy', {

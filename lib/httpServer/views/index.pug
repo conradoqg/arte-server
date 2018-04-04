@@ -62,18 +62,6 @@ block content
                                         a.button.copy(data-clipboard-text=`${formatters.buildCLICommand(req, artifact, 'windows')}`, data-balloon="Click to copy to the clipboard the CLI command for Windows", data-balloon-pos="up", title='CLI link for Windows') 
                                             span.icon
                                                 i.fab.fa-windows
-                // nav.pagination.is-centered(role="navigation", aria-label="pagination")                
-                    ul.pagination-list
-                        li                    
-                            a.pagination-link(aria-label="Page 1", aria-current="page") 1
-                        li
-                            span.pagination-ellipsis &hellip;
-                        li
-                            a.pagination-link.is-current(aria-label="Page 2", aria-current="page") 2
-                        li
-                            span.pagination-ellipsis &hellip;
-                        li
-                            a.pagination-link(aria-label="Page 3", aria-current="page") 3
             else
                 .hero
                     .hero-body
