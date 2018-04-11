@@ -984,6 +984,7 @@ describe('HTTPServer', async () => {
         });
     });
 
+    // TODO: Set the event which the webhook will be called
     describe('post /webhook', async () => {
         step('should post a webhook', async () => {
             const webhookCreationResult = await supertest(context.server.app)
