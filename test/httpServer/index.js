@@ -3,12 +3,16 @@ const should = require('chai').should();
 const supertest = require('supertest');
 const path = require('path');
 const rewire = require('rewire');
+const Chance = require('chance');
 const Config = require('../../lib/config');
 const HTTPServer = require('../../lib/httpServer');
 const DB = require('../../lib/db');
 const Bucket = require('../../lib/bucket');
 const Artifact = require('../../lib/artifact');
 const Webhook = rewire('../../lib/webhook');
+const Auth = rewire('../../lib/auth');
+
+const chance = new Chance();
 
 const EMBEDDED_MONGO = true;
 
@@ -107,13 +111,41 @@ describe('HTTPServer', async () => {
         const config = new Config('mongodb://localhost/test', 'test/data/storage');
         const dbService = new DB(config);
         await dbService.connect();
+        const authService = new Auth(dbService.metadata);
         const bucketService = new Bucket(dbService.storage, dbService.metadata);
         const webhookService = new Webhook(dbService.metadata);
         const artifactServer = new Artifact(dbService.storage, dbService.metadata, webhookService);
-        const server = new HTTPServer(dbService, bucketService, artifactServer, webhookService);
+        const server = new HTTPServer(dbService, bucketService, artifactServer, webhookService, authService);
         return {
             server,
-            dbService
+            dbService,
+            authService,
+            initialToken: await authService.getFirstTimeToken(),
+            userInvalid: {
+                name: chance.email({ domain: 'totvs.com.br' }),
+                password: chance.string({ length: 5 })
+            },
+            userUser1: {
+                name: chance.email({ domain: 'totvs.com.br' }),
+                password: chance.string({ length: 6 })
+            },
+            userUser2: {
+                name: chance.email({ domain: 'totvs.com.br' }),
+                password: chance.string({ length: 6 })
+            },
+            userUser3: {
+                name: chance.email({ domain: 'totvs.com.br' }),
+                password: chance.string({ length: 6 })
+            },
+            userAdmin1: {
+                name: chance.email({ domain: 'totvs.com.br' }),
+                password: chance.string({ length: 6 }),
+                type: 'admin'
+            },
+            userLDAPUser1: {
+                name: 'riemann',
+                password: 'password'
+            }
         };
     };
 
@@ -999,6 +1031,162 @@ describe('HTTPServer', async () => {
             webhookCreationResult.body.should.be.an('object');
             webhookCreationResult.body.bucket.should.not.be.empty;
         });
+    });
+
+    // TODO: Reorganize tests hierarchy
+    describe('/users', async () => {
+        step('create user 1', async () => {
+            return await supertest(context.server.app)
+                .post('/users')
+                .send(context.userUser1)
+                .expect(200);
+        });
+
+        step('create user 2', async () => {
+            return await supertest(context.server.app)
+                .post('/users')
+                .send(context.userUser2)
+                .expect(200);
+        });
+
+        step('create user 3', async () => {
+            return await supertest(context.server.app)
+                .post('/users')
+                .send(context.userUser3)
+                .expect(200);
+        });
+
+        step('create user admin 1', async () => {
+            return await supertest(context.server.app)
+                .post('/users')
+                .send(context.userAdmin1)
+                .expect(200);
+        });
+
+        step('create invalid user', async () => {
+            return await supertest(context.server.app)
+                .post('/users')
+                .send(context.userInvalid)
+                .expect(400);
+        });
+
+        step('get token for user 1', async () => {
+            const tokenResponse = await supertest(context.server.app)
+                .post('/tokens')
+                .send(context.userUser1)
+                .expect(200);
+            context.tokenUserUser1 = tokenResponse.body.token;
+        });
+
+        step('get token for an invaid user', async () => {
+            await supertest(context.server.app)
+                .post('/tokens')
+                .send({ name: 'none', password: 'none' })
+                .expect(401);
+        });
+
+        step('get token for user 2', async () => {
+            const tokenResponse = await supertest(context.server.app)
+                .post('/tokens')
+                .send(context.userUser2)
+                .expect(200);
+            context.tokenUserUser2 = tokenResponse.body.token;
+        });
+
+        step('get token for user 3', async () => {
+            const tokenResponse = await supertest(context.server.app)
+                .post('/tokens')
+                .send(context.userUser3)
+                .expect(200);
+            context.tokenUserUser3 = tokenResponse.body.token;
+        });    
+    
+        step('change user 3 password', async () => {
+            const newPassword = chance.string({ length: 6 });
+            await supertest(context.server.app)
+                .put('/users')
+                .set({ Authorization: context.tokenUserUser3 })
+                .send({
+                    name: context.userUser3.name,
+                    password: newPassword
+                })
+                .expect(200);
+
+            context.userUser3.password = newPassword;
+        });
+
+        step('get token for user 3 with the new password', async () => {
+            const tokenResponse = await supertest(context.server.app)
+                .post('/tokens')
+                .send(context.userUser3)
+                .expect(200);
+            context.tokenUserUser3 = tokenResponse.body.token;
+        });
+
+        step('get token for user admin 1', async () => {
+            const tokenResponse = await supertest(context.server.app)
+                .post('/tokens')
+                .set({ Authorization: context.initialToken })
+                .send(context.userAdmin1)
+                .expect(200);
+            context.tokenUserAdmin1 = tokenResponse.body.token;
+        });
+
+        step('change user 3 type to admin using admin user', async () => {
+            await supertest(context.server.app)
+                .put('/users/')
+                .set({ Authorization: context.tokenUserAdmin1 })
+                .send({
+                    name: context.userUser3.name,
+                    type: 'admin'
+                })
+                .expect(200);
+        });
+
+        step('get all users using admin', async () => {
+            const users = await supertest(context.server.app)
+                .get('/users')
+                .set({ Authorization: context.tokenUserAdmin1 })
+                .expect(200);
+            users.body.should.be.an('array');
+        });
+
+        /*
+        , [
+            {
+                'url': 'ldap://ldap.forumsys.com:389',
+                'bindDN': 'cn=read-only-admin,dc=example,dc=com',
+                'bindCredentials': 'password',
+                'searchBase': 'ou=mathematicians,dc=example,dc=com',
+                'searchFilter': '(uid={{username}})'
+            }]
+
+            step('update config adding ldap', async () => {
+        context.config.ldap = {
+            url: 'ldap://ldap.forumsys.com:389',
+            bindDN: 'cn=read-only-admin,dc=example,dc=com',
+            bindCredentials: 'password',
+            searchBase: 'dc=example,dc=com',
+            searchFilter: '(uid={{username}})'
+        };
+        const configResponse = await supertest(context.server1.app)
+            .put('/admin/config')
+            .set({ Authorization: context.tokenUserAdmin1 })
+            .send(context.config)
+            .expect(200);
+        configResponse.body.should.be.an('object');
+        context.config = configResponse.body;
+        context.authService.ldapConfig = context.config.ldap;
+    });
+
+    step('get token for ldap user 1', async () => {
+        const tokenResponse = await supertest(context.server1.app)
+            .post('/tokens')
+            .send(context.userLDAPUser1)
+            .expect(200);
+        context.tokenUserLDAPUser1 = tokenResponse.body.token;
+    });
+            */
     });
 
     describe('features', async () => {
