@@ -127,24 +127,28 @@ describe('HTTPServer', async () => {
             },
             userUser1: {
                 name: chance.email({ domain: 'totvs.com.br' }),
-                password: chance.string({ length: 6 })
+                password: chance.string({ length: 6 }),
+                roles: ['user']
             },
             userUser2: {
                 name: chance.email({ domain: 'totvs.com.br' }),
-                password: chance.string({ length: 6 })
+                password: chance.string({ length: 6 }),
+                roles: ['user']
             },
             userUser3: {
                 name: chance.email({ domain: 'totvs.com.br' }),
-                password: chance.string({ length: 6 })
+                password: chance.string({ length: 6 }),
+                roles: ['user']
             },
             userAdmin1: {
                 name: chance.email({ domain: 'totvs.com.br' }),
                 password: chance.string({ length: 6 }),
-                type: 'admin'
+                roles: ['superuser']
             },
             userLDAPUser1: {
                 name: 'riemann',
-                password: 'password'
+                password: 'password',
+                roles: ['user']
             }
         };
     };
@@ -1033,44 +1037,50 @@ describe('HTTPServer', async () => {
         });
     });
 
-    // TODO: Reorganize tests hierarchy
-    describe('/users', async () => {
-        step('create user 1', async () => {
+    describe('post /users', async () => {
+        step('should create user 1', async () => {
             return await supertest(context.server.app)
                 .post('/users')
+                .set({ Authorization: context.initialToken })
                 .send(context.userUser1)
                 .expect(200);
         });
 
-        step('create user 2', async () => {
+        step('should create user 2', async () => {
             return await supertest(context.server.app)
                 .post('/users')
+                .set({ Authorization: context.initialToken })
                 .send(context.userUser2)
                 .expect(200);
         });
 
-        step('create user 3', async () => {
+        step('should create user 3', async () => {
             return await supertest(context.server.app)
                 .post('/users')
+                .set({ Authorization: context.initialToken })
                 .send(context.userUser3)
                 .expect(200);
         });
 
-        step('create user admin 1', async () => {
+        step('should create user admin 1', async () => {
             return await supertest(context.server.app)
                 .post('/users')
+                .set({ Authorization: context.initialToken })
                 .send(context.userAdmin1)
                 .expect(200);
         });
 
-        step('create invalid user', async () => {
+        step('should not create an invalid user', async () => {
             return await supertest(context.server.app)
                 .post('/users')
+                .set({ Authorization: context.initialToken })
                 .send(context.userInvalid)
                 .expect(400);
         });
+    });
 
-        step('get token for user 1', async () => {
+    describe('post /tokens', async () => {
+        step('should get token for user 1', async () => {
             const tokenResponse = await supertest(context.server.app)
                 .post('/tokens')
                 .send(context.userUser1)
@@ -1078,14 +1088,14 @@ describe('HTTPServer', async () => {
             context.tokenUserUser1 = tokenResponse.body.token;
         });
 
-        step('get token for an invaid user', async () => {
+        step('should get token for an invaid user', async () => {
             await supertest(context.server.app)
                 .post('/tokens')
                 .send({ name: 'none', password: 'none' })
                 .expect(401);
         });
 
-        step('get token for user 2', async () => {
+        step('should get token for user 2', async () => {
             const tokenResponse = await supertest(context.server.app)
                 .post('/tokens')
                 .send(context.userUser2)
@@ -1093,15 +1103,26 @@ describe('HTTPServer', async () => {
             context.tokenUserUser2 = tokenResponse.body.token;
         });
 
-        step('get token for user 3', async () => {
+        step('should get token for user 3', async () => {
             const tokenResponse = await supertest(context.server.app)
                 .post('/tokens')
                 .send(context.userUser3)
                 .expect(200);
             context.tokenUserUser3 = tokenResponse.body.token;
-        });    
-    
-        step('change user 3 password', async () => {
+        });
+
+        step('should get token for user admin 1', async () => {
+            const tokenResponse = await supertest(context.server.app)
+                .post('/tokens')
+                .set({ Authorization: context.initialToken })
+                .send(context.userAdmin1)
+                .expect(200);
+            context.tokenUserAdmin1 = tokenResponse.body.token;
+        });
+    });
+
+    describe('put /users', async () => {
+        step('should change user 3 password', async () => {
             const newPassword = chance.string({ length: 6 });
             await supertest(context.server.app)
                 .put('/users')
@@ -1113,9 +1134,7 @@ describe('HTTPServer', async () => {
                 .expect(200);
 
             context.userUser3.password = newPassword;
-        });
 
-        step('get token for user 3 with the new password', async () => {
             const tokenResponse = await supertest(context.server.app)
                 .post('/tokens')
                 .send(context.userUser3)
@@ -1123,32 +1142,44 @@ describe('HTTPServer', async () => {
             context.tokenUserUser3 = tokenResponse.body.token;
         });
 
-        step('get token for user admin 1', async () => {
-            const tokenResponse = await supertest(context.server.app)
-                .post('/tokens')
-                .set({ Authorization: context.initialToken })
-                .send(context.userAdmin1)
-                .expect(200);
-            context.tokenUserAdmin1 = tokenResponse.body.token;
+        step('should not change user 3 role to superuser using user 3', async () => {
+            await supertest(context.server.app)
+                .put('/users/')
+                .set({ Authorization: context.tokenUserUser3 })
+                .send({
+                    name: context.userUser3.name,
+                    roles: ['superuser']
+                })
+                .expect(403);
         });
 
-        step('change user 3 type to admin using admin user', async () => {
+        step('should change user 3 role to superuser using superuser', async () => {
             await supertest(context.server.app)
                 .put('/users/')
                 .set({ Authorization: context.tokenUserAdmin1 })
-                .send({
+                .send({                    
                     name: context.userUser3.name,
-                    type: 'admin'
+                    roles: ['superuser']
                 })
                 .expect(200);
         });
 
-        step('get all users using admin', async () => {
+    });
+
+    describe('get /users', async () => {
+        step('should get all users using admin', async () => {
             const users = await supertest(context.server.app)
                 .get('/users')
                 .set({ Authorization: context.tokenUserAdmin1 })
                 .expect(200);
             users.body.should.be.an('array');
+        });
+
+        step('should not get all users using user 1', async () => {
+            return await supertest(context.server.app)
+                .get('/users')
+                .set({ Authorization: context.tokenUserUser1 })
+                .expect(403);            
         });
 
         /*
