@@ -6,7 +6,7 @@ block content
             .columns
                 .column.is-half.is-offset-one-quarter
                     .box
-                        if user                            
+                        if credential && !credential.roles.includes('anonymous')
                             p You're already logged in, do you want to #[a#logoutButton(href='javascript:logout();') logout]?
                         else                            
                             form(action='javascript:void(0);', onSubmit='login();')                             

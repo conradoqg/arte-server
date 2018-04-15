@@ -112,7 +112,7 @@ describe('HTTPServer', async () => {
         const dbService = new DB(config);
         await dbService.connect();
         const authService = new Auth(dbService.metadata);
-        const bucketService = new Bucket(dbService.storage, dbService.metadata);
+        const bucketService = new Bucket(dbService.storage, dbService.metadata, authService);
         const webhookService = new Webhook(dbService.metadata);
         const artifactServer = new Artifact(dbService.storage, dbService.metadata, webhookService);
         const server = new HTTPServer(dbService, bucketService, artifactServer, webhookService, authService);
@@ -192,8 +192,9 @@ describe('HTTPServer', async () => {
     describe('get /buckets', async () => {
         // get buckets -> []
         step('should get buckets', async () => {
-            const bucketsResult = await supertest(context.server.app)
+            const bucketsResult = await supertest(context.server.app)                
                 .get('/buckets')
+                .set({ Authorization: context.initialToken })
                 .expect(200);
             should.exist(bucketsResult.body);
             bucketsResult.body.should.be.an('array').and.to.have.lengthOf(0);
@@ -205,6 +206,7 @@ describe('HTTPServer', async () => {
         step('should create the bucket 1', async () => {
             const bucketsResult = await supertest(context.server.app)
                 .post('/buckets')
+                .set({ Authorization: context.initialToken })
                 .send({
                     name: 'bucket1',
                     retentionPolicy: [{
@@ -269,6 +271,7 @@ describe('HTTPServer', async () => {
         step('should not get inexistent bucket', async () => {
             return await supertest(context.server.app)
                 .get('/buckets/bucket0')
+                .set({ Authorization: context.initialToken })
                 .expect(404);
         });
 
@@ -276,6 +279,7 @@ describe('HTTPServer', async () => {
         step('should get bucket 1', async () => {
             const bucketsResult = await supertest(context.server.app)
                 .get('/buckets/bucket1')
+                .set({ Authorization: context.initialToken })
                 .expect(200);
             should.exist(bucketsResult.body);
             bucketsResult.body.should.be.an('object');
@@ -288,6 +292,7 @@ describe('HTTPServer', async () => {
         step('should create an artifact with version 1.0', async () => {
             const result = await supertest(context.server.app)
                 .put('/buckets/bucket1/artifacts/artifact1/1.0')
+                .set({ Authorization: context.initialToken })
                 .attach('artifact', path.resolve(__dirname, 'file.zip'))
                 .expect(200);
             should.exist(result.body);
@@ -300,6 +305,7 @@ describe('HTTPServer', async () => {
         step('should create an artifact with version 1.0 but with a greater lastUpdate', async () => {
             const result = await supertest(context.server.app)
                 .put('/buckets/bucket1/artifacts/artifact1/1.0')
+                .set({ Authorization: context.initialToken })
                 .attach('artifact', path.resolve(__dirname, 'file.zip'))
                 .expect(200);
             should.exist(result.body);
@@ -312,6 +318,7 @@ describe('HTTPServer', async () => {
         step('should create an artifact with version 2.0', async () => {
             const result = await supertest(context.server.app)
                 .put('/buckets/bucket1/artifacts/artifact1/2.0')
+                .set({ Authorization: context.initialToken })
                 .attach('artifact', path.resolve(__dirname, 'file.zip'))
                 .expect(200);
             should.exist(result.body);
@@ -323,6 +330,7 @@ describe('HTTPServer', async () => {
         step('should create an artifact with version 1.0 and metadata os=linux', async () => {
             const result = await supertest(context.server.app)
                 .put('/buckets/bucket1/artifacts/artifact3/1.0')
+                .set({ Authorization: context.initialToken })
                 .field({
                     os: 'linux'
                 })
@@ -340,6 +348,7 @@ describe('HTTPServer', async () => {
         step('should create an artifact with version 1.0 and metadata os=linux and arch=x86', async () => {
             const result = await supertest(context.server.app)
                 .put('/buckets/bucket1/artifacts/artifact3/1.0')
+                .set({ Authorization: context.initialToken })
                 .field({
                     os: 'linux',
                     arch: 'x86'
@@ -358,6 +367,7 @@ describe('HTTPServer', async () => {
         step('should create an artifact with version 1.0 and metadata os=macos', async () => {
             const result = await supertest(context.server.app)
                 .put('/buckets/bucket1/artifacts/artifact3/1.0')
+                .set({ Authorization: context.initialToken })
                 .field({
                     os: 'macos'
                 })
@@ -375,6 +385,7 @@ describe('HTTPServer', async () => {
         step('should create an artifact with version 1.0 and metadata os=windows and arch=x86', async () => {
             const result = await supertest(context.server.app)
                 .put('/buckets/bucket1/artifacts/artifact3/1.0')
+                .set({ Authorization: context.initialToken })
                 .field({
                     os: 'windows',
                     arch: 'x86'
@@ -395,6 +406,7 @@ describe('HTTPServer', async () => {
         step('should get the artifact 1 without specifying the version', async () => {
             const result = await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact1')
+                .set({ Authorization: context.initialToken })
                 .accept('application/zip')
                 .buffer(true)
                 .responseType('blob')
@@ -409,6 +421,7 @@ describe('HTTPServer', async () => {
         step('should get the latest artifact 1', async () => {
             const result = await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact1/latest')
+                .set({ Authorization: context.initialToken })
                 .accept('application/zip')
                 .buffer(true)
                 .responseType('blob')
@@ -423,6 +436,7 @@ describe('HTTPServer', async () => {
         step('should get the oldest artifact 1', async () => {
             const result = await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact1/oldest')
+                .set({ Authorization: context.initialToken })
                 .accept('application/zip')
                 .buffer(true)
                 .responseType('blob')
@@ -437,6 +451,7 @@ describe('HTTPServer', async () => {
         step('should get the artifact 1 with version 1.0', async () => {
             const result = await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact1/1.0')
+                .set({ Authorization: context.initialToken })
                 .accept('application/zip')
                 .buffer(true)
                 .responseType('blob')
@@ -451,6 +466,7 @@ describe('HTTPServer', async () => {
         step('should get the artifact 1 with version 2.0', async () => {
             const result = await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact1/2.0')
+                .set({ Authorization: context.initialToken })
                 .accept('application/zip')
                 .buffer(true)
                 .responseType('blob')
@@ -465,6 +481,7 @@ describe('HTTPServer', async () => {
         step('should not get the artifact 1 with version 3.0', async () => {
             return await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact1/3.0')
+                .set({ Authorization: context.initialToken })
                 .accept('application/zip')
                 .buffer(true)
                 .responseType('blob')
@@ -475,6 +492,7 @@ describe('HTTPServer', async () => {
         step('should not get the artifact 2 without specifying the version', async () => {
             return await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact2')
+                .set({ Authorization: context.initialToken })
                 .accept('application/zip')
                 .buffer(true)
                 .responseType('blob')
@@ -485,6 +503,7 @@ describe('HTTPServer', async () => {
         step('should not get the latest artifact 2', async () => {
             return await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact2/latest')
+                .set({ Authorization: context.initialToken })
                 .accept('application/zip')
                 .buffer(true)
                 .responseType('blob')
@@ -495,6 +514,7 @@ describe('HTTPServer', async () => {
         step('should not get the oldest artifact 2', async () => {
             return await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact2/oldest')
+                .set({ Authorization: context.initialToken })
                 .accept('application/zip')
                 .buffer(true)
                 .responseType('blob')
@@ -505,6 +525,7 @@ describe('HTTPServer', async () => {
         step('should get the artifact 3 with version 1.0 and metadata os=linux', async () => {
             const result = await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact3/1.0?os=linux')
+                .set({ Authorization: context.initialToken })
                 .accept('application/zip')
                 .buffer(true)
                 .responseType('blob')
@@ -519,6 +540,7 @@ describe('HTTPServer', async () => {
         step('should get the artifact 3 with version 1.0 and metadata os=linux and arch=x86', async () => {
             const result = await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact3/1.0?os=linux&arch=x86')
+                .set({ Authorization: context.initialToken })
                 .accept('application/zip')
                 .buffer(true)
                 .responseType('blob')
@@ -533,6 +555,7 @@ describe('HTTPServer', async () => {
         step('should get the artifact 3 with version 1.0 and metadata os=macos', async () => {
             const result = await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact3/1.0?os=macos')
+                .set({ Authorization: context.initialToken })
                 .accept('application/zip')
                 .buffer(true)
                 .responseType('blob')
@@ -547,6 +570,7 @@ describe('HTTPServer', async () => {
         step('should get the artifact 3 with version 1.0 and metadata os=latest', async () => {
             const result = await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact3/1.0?os=latest')
+                .set({ Authorization: context.initialToken })
                 .accept('application/zip')
                 .buffer(true)
                 .responseType('blob')
@@ -561,6 +585,7 @@ describe('HTTPServer', async () => {
         step('should get the artifact 3 with version 1.0 and metadata os=windows', async () => {
             return await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact3/1.0?os=windows')
+                .set({ Authorization: context.initialToken })
                 .accept('application/zip')
                 .buffer(true)
                 .responseType('blob')
@@ -571,6 +596,7 @@ describe('HTTPServer', async () => {
         step('should get the artifact 3 with version 1.0 and metadata os=all', async () => {
             return await supertest(context.server.app)
                 .get('/buckets/bucket1/artifacts/artifact3/1.0?os=all')
+                .set({ Authorization: context.initialToken })
                 .accept('application/zip')
                 .buffer(true)
                 .responseType('blob')
@@ -583,6 +609,7 @@ describe('HTTPServer', async () => {
         step('should get all artifacts 1 without specifying a version', async () => {
             const result = await supertest(context.server.app)
                 .get('/artifacts/search?bucket=bucket1&artifact=artifact1')
+                .set({ Authorization: context.initialToken })
                 .accept('application/json')
                 .expect(200);
             should.exist(result.body);
@@ -615,6 +642,7 @@ describe('HTTPServer', async () => {
         step('should not get the artifact 2', async () => {
             return await supertest(context.server.app)
                 .get('/artifacts/search?bucket=bucket1&artifact=artifact2')
+                .set({ Authorization: context.initialToken })
                 .accept('application/json')
                 .expect(200);
         });
@@ -623,6 +651,7 @@ describe('HTTPServer', async () => {
         step('should get the latest artifacts 1', async () => {
             const result = await supertest(context.server.app)
                 .get('/artifacts/search?bucket=bucket1&artifact=artifact1&version=latest')
+                .set({ Authorization: context.initialToken })
                 .accept('application/json')
                 .expect(200);
             should.exist(result.body);
@@ -655,6 +684,7 @@ describe('HTTPServer', async () => {
         step('should get the oldest artifacts 1', async () => {
             const result = await supertest(context.server.app)
                 .get('/artifacts/search?bucket=bucket1&artifact=artifact1&version=oldest')
+                .set({ Authorization: context.initialToken })
                 .accept('application/json')
                 .expect(200);
             should.exist(result.body);
@@ -687,6 +717,7 @@ describe('HTTPServer', async () => {
         step('should get the artifacts 1 with version 1.0', async () => {
             const result = await supertest(context.server.app)
                 .get('/artifacts/search?bucket=bucket1&artifact=artifact1&version=1.0')
+                .set({ Authorization: context.initialToken })
                 .accept('application/json')
                 .expect(200);
             should.exist(result.body);
@@ -708,6 +739,7 @@ describe('HTTPServer', async () => {
         step('should get the artifacts 1 with version 2.0', async () => {
             const result = await supertest(context.server.app)
                 .get('/artifacts/search?bucket=bucket1&artifact=artifact1&version=2.0')
+                .set({ Authorization: context.initialToken })
                 .accept('application/json')
                 .expect(200);
             should.exist(result.body);
@@ -729,6 +761,7 @@ describe('HTTPServer', async () => {
         step('should not get artifacts 1 with version 3.0', async () => {
             const result = await supertest(context.server.app)
                 .get('/artifacts/search?bucket=bucket1&artifact=artifact1&version=3.0')
+                .set({ Authorization: context.initialToken })
                 .accept('application/json')
                 .expect(200);
             should.exist(result.body);
@@ -739,6 +772,7 @@ describe('HTTPServer', async () => {
         step('should not get artifact 1 using invalid metadata', async () => {
             const result = await supertest(context.server.app)
                 .get('/artifacts/search?bucket=bucket1&artifact=artifact1&version=1.0&arch=x2')
+                .set({ Authorization: context.initialToken })
                 .accept('application/json')
                 .expect(200);
             should.exist(result.body);
@@ -749,6 +783,7 @@ describe('HTTPServer', async () => {
         step('should get the artifacts 3 with version 1.0', async () => {
             const result = await supertest(context.server.app)
                 .get('/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0')
+                .set({ Authorization: context.initialToken })
                 .accept('application/json')
                 .expect(200);
             should.exist(result.body);
@@ -803,6 +838,7 @@ describe('HTTPServer', async () => {
         step('should get the artifacts 3 with version 1.0 and metadata os=linux', async () => {
             const result = await supertest(context.server.app)
                 .get('/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0&os=linux')
+                .set({ Authorization: context.initialToken })
                 .accept('application/json')
                 .expect(200);
             should.exist(result.body);
@@ -835,6 +871,7 @@ describe('HTTPServer', async () => {
         step('should get the artifacts 3 with version 1.0 and metadata os=linux and arch=x86', async () => {
             const result = await supertest(context.server.app)
                 .get('/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0&os=linux&arch=x86')
+                .set({ Authorization: context.initialToken })
                 .accept('application/json')
                 .expect(200);
             should.exist(result.body);
@@ -856,6 +893,7 @@ describe('HTTPServer', async () => {
         step('should get the artifacts 3 with version 1.0 and metadata os=macos', async () => {
             const result = await supertest(context.server.app)
                 .get('/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0&os=macos')
+                .set({ Authorization: context.initialToken })
                 .accept('application/json')
                 .expect(200);
             should.exist(result.body);
@@ -877,6 +915,7 @@ describe('HTTPServer', async () => {
         step('should get the artifacts 3 with version 1.0 and metadata os=macos and arch=all', async () => {
             const result = await supertest(context.server.app)
                 .get('/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0&os=macos&arch=all')
+                .set({ Authorization: context.initialToken })
                 .accept('application/json')
                 .expect(200);
             should.exist(result.body);
@@ -898,6 +937,7 @@ describe('HTTPServer', async () => {
         step('should get the artifacts 3 with version 1.0 and metadata os=latest', async () => {
             const result = await supertest(context.server.app)
                 .get('/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0&os=latest')
+                .set({ Authorization: context.initialToken })
                 .accept('application/json')
                 .expect(200);
             should.exist(result.body);
@@ -953,6 +993,7 @@ describe('HTTPServer', async () => {
         step('should get the artifacts 3 with version 1.0 and metadata os=windows and arch=x86', async () => {
             const result = await supertest(context.server.app)
                 .get('/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0&os=windows')
+                .set({ Authorization: context.initialToken })
                 .accept('application/json')
                 .expect(200);
             should.exist(result.body);
@@ -974,6 +1015,7 @@ describe('HTTPServer', async () => {
         step('should not get the artifacts 3 with os=all', async () => {
             const result = await supertest(context.server.app)
                 .get('/artifacts/search?bucket=bucket1&artifact=artifact1&version=3.0')
+                .set({ Authorization: context.initialToken })
                 .accept('application/json')
                 .expect(200);
             should.exist(result.body);
@@ -984,6 +1026,7 @@ describe('HTTPServer', async () => {
         step('should get all artifacts from bucket1', async () => {
             const result = await supertest(context.server.app)
                 .get('/artifacts/search?bucket=bucket1')
+                .set({ Authorization: context.initialToken })
                 .accept('application/json')
                 .expect(200);
             should.exist(result.body);
@@ -996,6 +1039,7 @@ describe('HTTPServer', async () => {
         step('should delete  artifacts 1 version 1.0', async () => {
             const deleteResult = await supertest(context.server.app)
                 .delete('/buckets/bucket1/artifacts/artifact1/1.0')
+                .set({ Authorization: context.initialToken })
                 .expect(200);
             should.exist(deleteResult.body);
             deleteResult.body.should.be.an('object');
@@ -1128,7 +1172,7 @@ describe('HTTPServer', async () => {
                 .put('/users')
                 .set({ Authorization: context.tokenUserUser3 })
                 .send({
-                    username: context.userUser3.name,
+                    username: context.userUser3.username,
                     password: newPassword
                 })
                 .expect(200);
@@ -1147,7 +1191,7 @@ describe('HTTPServer', async () => {
                 .put('/users/')
                 .set({ Authorization: context.tokenUserUser3 })
                 .send({
-                    username: context.userUser3.name,
+                    username: context.userUser3.username,
                     roles: ['superuser']
                 })
                 .expect(403);
@@ -1157,8 +1201,8 @@ describe('HTTPServer', async () => {
             await supertest(context.server.app)
                 .put('/users/')
                 .set({ Authorization: context.tokenUserAdmin1 })
-                .send({                    
-                    username: context.userUser3.name,
+                .send({
+                    username: context.userUser3.username,
                     roles: ['superuser']
                 })
                 .expect(200);
@@ -1179,7 +1223,7 @@ describe('HTTPServer', async () => {
             return await supertest(context.server.app)
                 .get('/users')
                 .set({ Authorization: context.tokenUserUser1 })
-                .expect(403);            
+                .expect(403);
         });
 
         /*
@@ -1225,6 +1269,7 @@ describe('HTTPServer', async () => {
         step('should create the artifact 4 with the default version (version=now)', async () => {
             const result = await supertest(context.server.app)
                 .put('/buckets/bucket1/artifacts/artifact4')
+                .set({ Authorization: context.initialToken })
                 .attach('artifact', path.resolve(__dirname, 'file.zip'))
                 .expect(200);
             should.exist(result.body);
@@ -1240,11 +1285,13 @@ describe('HTTPServer', async () => {
 
             await supertest(context.server.app)
                 .put('/buckets/bucket1/artifacts/artifact5')
+                .set({ Authorization: context.initialToken })
                 .attach('artifact', path.resolve(__dirname, 'file.zip'))
                 .expect(200);
 
             await supertest(context.server.app)
                 .put('/buckets/bucket1/artifacts/artifact6')
+                .set({ Authorization: context.initialToken })
                 .attach('artifact', path.resolve(__dirname, 'file.zip'))
                 .expect(200);
 
