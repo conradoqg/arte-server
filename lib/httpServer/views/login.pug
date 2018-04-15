@@ -1,0 +1,38 @@
+extends layout.pug
+
+block content
+    .section
+        .container
+            .columns
+                .column.is-half.is-offset-one-quarter
+                    .box
+                        if user                            
+                            p You're already logged in, do you want to #[a#logoutButton(href='javascript:logout();') logout]?
+                        else                            
+                            form(action='javascript:void(0);', onSubmit='login();')                             
+                                .field
+                                    label.label Username
+                                    input.input#usernameTextbox(type='text', placeholder='username')
+                                    p.help.is-danger#usernameAlert(style='display: none;') The username cannot be empty
+                                .field
+                                    label.label Password
+                                    input.input#passwordTextbox(type='text', placeholder='password')
+                                    p.help.is-danger#passwordAlert(style='display: none;') The password cannot be empty
+                                hr
+                                h2.title-2.has-text-centered.has-text-weight-bold OR
+                                hr
+                                .field
+                                    label.label Token
+                                    input.input#tokenTextbox(type='text', placeholder='token')
+                                .field.is-grouped.is-grouped-right
+                                    .control
+                                        button.button.is-primary#loginButton(type='submit') Login                                                        
+                            br
+                            .notification#messageBox(style='display: none;')
+                                .button.delete(onClick='message(null, null, false);')
+                                p#messageText                    
+    script
+        if env == 'development'
+            include login.js
+        else
+            include:uglify-js login.js

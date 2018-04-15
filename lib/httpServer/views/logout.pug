@@ -1,0 +1,12 @@
+extends layout.pug
+
+block content
+    .section
+        .container
+            .columns
+                .column.is-half.is-offset-one-quarter
+                    .box                        
+                        p Logging out...                        
+    script.    
+        cookie.remove('authorization');
+        window.location.href = '/';

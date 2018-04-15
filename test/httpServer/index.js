@@ -122,31 +122,31 @@ describe('HTTPServer', async () => {
             authService,
             initialToken: await authService.getFirstTimeToken(),
             userInvalid: {
-                name: chance.email({ domain: 'totvs.com.br' }),
+                username: chance.email({ domain: 'totvs.com.br' }),
                 password: chance.string({ length: 5 })
             },
             userUser1: {
-                name: chance.email({ domain: 'totvs.com.br' }),
+                username: chance.email({ domain: 'totvs.com.br' }),
                 password: chance.string({ length: 6 }),
                 roles: ['user']
             },
             userUser2: {
-                name: chance.email({ domain: 'totvs.com.br' }),
+                username: chance.email({ domain: 'totvs.com.br' }),
                 password: chance.string({ length: 6 }),
                 roles: ['user']
             },
             userUser3: {
-                name: chance.email({ domain: 'totvs.com.br' }),
+                username: chance.email({ domain: 'totvs.com.br' }),
                 password: chance.string({ length: 6 }),
                 roles: ['user']
             },
             userAdmin1: {
-                name: chance.email({ domain: 'totvs.com.br' }),
+                username: chance.email({ domain: 'totvs.com.br' }),
                 password: chance.string({ length: 6 }),
                 roles: ['superuser']
             },
             userLDAPUser1: {
-                name: 'riemann',
+                username: 'riemann',
                 password: 'password',
                 roles: ['user']
             }
@@ -1091,7 +1091,7 @@ describe('HTTPServer', async () => {
         step('should get token for an invaid user', async () => {
             await supertest(context.server.app)
                 .post('/tokens')
-                .send({ name: 'none', password: 'none' })
+                .send({ username: 'none', password: 'none' })
                 .expect(401);
         });
 
@@ -1128,7 +1128,7 @@ describe('HTTPServer', async () => {
                 .put('/users')
                 .set({ Authorization: context.tokenUserUser3 })
                 .send({
-                    name: context.userUser3.name,
+                    username: context.userUser3.name,
                     password: newPassword
                 })
                 .expect(200);
@@ -1147,7 +1147,7 @@ describe('HTTPServer', async () => {
                 .put('/users/')
                 .set({ Authorization: context.tokenUserUser3 })
                 .send({
-                    name: context.userUser3.name,
+                    username: context.userUser3.name,
                     roles: ['superuser']
                 })
                 .expect(403);
@@ -1158,7 +1158,7 @@ describe('HTTPServer', async () => {
                 .put('/users/')
                 .set({ Authorization: context.tokenUserAdmin1 })
                 .send({                    
-                    name: context.userUser3.name,
+                    username: context.userUser3.name,
                     roles: ['superuser']
                 })
                 .expect(200);

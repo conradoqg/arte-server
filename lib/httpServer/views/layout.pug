@@ -6,22 +6,46 @@ html(lang="en")
         link(rel="stylesheet", href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.6.2/css/bulma.min.css")
         link(rel="stylesheet", href="https://cdnjs.cloudflare.com/ajax/libs/balloon-css/0.5.0/balloon.min.css")        
         script(src="https://use.fontawesome.com/releases/v5.0.7/js/all.js", defer)
-        script(src="https://cdn.rawgit.com/zenorocha/clipboard.js/master/dist/clipboard.js")
-        script(src="https://cdnjs.cloudflare.com/ajax/libs/zepto/1.2.0/zepto.js")                
+        script(src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.0/clipboard.min.js")
+        script(src="https://cdnjs.cloudflare.com/ajax/libs/zepto/1.2.0/zepto.min.js")    
+        script(src="https://cdnjs.cloudflare.com/ajax/libs/cookie.js/1.2.2/cookie.min.js")            
+        link(rel='apple-touch-icon', sizes='57x57', href='/public/apple-icon-57x57.png')
+        link(rel='apple-touch-icon', sizes='60x60', href='/public/apple-icon-60x60.png')
+        link(rel='apple-touch-icon', sizes='72x72', href='/public/apple-icon-72x72.png')
+        link(rel='apple-touch-icon', sizes='76x76', href='/public/apple-icon-76x76.png')
+        link(rel='apple-touch-icon', sizes='114x114', href='/public/apple-icon-114x114.png')
+        link(rel='apple-touch-icon', sizes='120x120', href='/public/apple-icon-120x120.png')
+        link(rel='apple-touch-icon', sizes='144x144', href='/public/apple-icon-144x144.png')
+        link(rel='apple-touch-icon', sizes='152x152', href='/public/apple-icon-152x152.png')
+        link(rel='apple-touch-icon', sizes='180x180', href='/public/apple-icon-180x180.png')
+        link(rel='icon', type='image/png', sizes='192x192', href='/public/android-icon-192x192.png')
+        link(rel='icon', type='image/png', sizes='32x32', href='/public/favicon-32x32.png')
+        link(rel='icon', type='image/png', sizes='96x96', href='/public/favicon-96x96.png')
+        link(rel='icon', type='image/png', sizes='16x16', href='/public/favicon-16x16.png')
+        link(rel='manifest', href='/public/manifest.json')
+        meta(name='msapplication-TileColor', content='#ffffff')
+        meta(name='msapplication-TileImage', content='/public/ms-icon-144x144.png')
+        meta(name='theme-color', content='#ffffff')            
         style(type='text/css').
     body
-        nav.navbar.is-info
-            .container
-                .navbar-menu.is-active
-                    .navbar-brand
-                        a.navbar-item(href="https://bulma.io")
-                            img(src="/public/arte.png", alt="Arte", width="28", height="28")
-                            .title.has-text-white.is-4 Arte
+        nav.navbar.is-info                        
+            .navbar-brand                        
+                a.navbar-item(href="/")
+                    img(src="/public/arte.png", alt="Arte", width="28", height="28")
+                    .title.has-text-white.is-4 Arte
+            .navbar-menu
+                .navbar-end
+                    .navbar-item
+                        if user
+                            a.button.is-primary(href="/logout", class=`${pageTitle=='Logout' ? 'is-active' : ''}`) Logout
+                        else
+                            a.button.is-primary(href="/login", class=`${pageTitle=='Login' ? 'is-active' : ''}`) Login                                
         block content
-        section.hero.is-small.is-primary
+        section.hero.is-small.is-warning
             .hero-body
                 .container 
                     h1.title Get the CLI
+                    h2.subtitle The easiest way to get your artifacts from the command-line!
                     p For Linux
                         .field.has-addons
                             .control
@@ -56,30 +80,8 @@ html(lang="en")
                         span . The source code is licensed under
                         a(href="https://github.com/conradoqg/arte-server/blob/master/LICENSE.md")  MIT
                         span . 
-        script.
-            Zepto(function($){
-                new ClipboardJS('.copy', {
-                    text: function(e) {
-                        return e.getAttribute('data-clipboard-text');
-                    }
-                });
-            })
-
-            function searchArtifact(e) {
-                var bucketSelect = document.getElementById('bucketSelect');
-                var bucket = bucketSelect[bucketSelect.selectedIndex].value;
-                var artifact = document.getElementById('artifactTextbox').value;
-                var version = document.getElementById('versionTextbox').value;
-                var metadata = document.getElementById('metadataTextbox').value;
-
-                var url = '/artifacts/search?partial=true';                
-
-                if (bucket) url += '&bucket=' + bucket;
-                if (artifact) url += '&artifact=' + artifact;
-                if (version) url+= '&version=' + version;
-                if (metadata) url += '&' + metadata.replace(/,/g, '&');
-                window.location.href = url;
-                e.preventDefault();
-            }
-
-            
+        script
+            if env == 'development'
+                include layout.js
+            else
+                include:uglify-js layout.js
