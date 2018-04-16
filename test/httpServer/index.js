@@ -15,6 +15,7 @@ const Auth = rewire('../../lib/auth');
 const chance = new Chance();
 
 const EMBEDDED_MONGO = true;
+const KEEP_DATABASE = false;
 
 let Mongoose = null;
 let mongoose = null;
@@ -114,12 +115,13 @@ describe('HTTPServer', async () => {
         const authService = new Auth(dbService.metadata);
         const bucketService = new Bucket(dbService.storage, dbService.metadata, authService);
         const webhookService = new Webhook(dbService.metadata);
-        const artifactServer = new Artifact(dbService.storage, dbService.metadata, webhookService);
+        const artifactServer = new Artifact(dbService.storage, dbService.metadata, webhookService, authService);
         const server = new HTTPServer(dbService, bucketService, artifactServer, webhookService, authService);
         return {
             server,
             dbService,
             authService,
+            config,
             initialToken: await authService.getFirstTimeToken(),
             userInvalid: {
                 username: chance.email({ domain: 'totvs.com.br' }),
@@ -163,7 +165,7 @@ describe('HTTPServer', async () => {
     });
 
     after(async () => {
-        await deleteContext(context);
+        if (!KEEP_DATABASE) await deleteContext(context);
         if (EMBEDDED_MONGO) {
             await mockgoose.helper.reset();
             await mongoose.disconnect();
@@ -186,898 +188,6 @@ describe('HTTPServer', async () => {
             await supertest(context.server.app)
                 .get('/throw')
                 .expect(500);
-        });
-    });
-
-    describe('get /buckets', async () => {
-        // get buckets -> []
-        step('should get buckets', async () => {
-            const bucketsResult = await supertest(context.server.app)                
-                .get('/buckets')
-                .set({ Authorization: context.initialToken })
-                .expect(200);
-            should.exist(bucketsResult.body);
-            bucketsResult.body.should.be.an('array').and.to.have.lengthOf(0);
-        });
-    });
-
-    describe('post /buckets', async () => {
-        // post bucket1 -> bucket1
-        step('should create the bucket 1', async () => {
-            const bucketsResult = await supertest(context.server.app)
-                .post('/buckets')
-                .set({ Authorization: context.initialToken })
-                .send({
-                    name: 'bucket1',
-                    retentionPolicy: [{
-                        filter: {
-                            name: 'artifact',
-                            version: '1.0',
-                            metadata: {
-                                os: 'all'
-                            }
-                        },
-                        totalSize: '1MB',
-                        fileCount: 5,
-                        age: '15 days'
-                    }],
-                    template: {
-                        fileName: '{name}-{version}-{tag}-{os}-{arch}-{language}-{country}-{customVersion}.zip',
-                        properties: {
-                            tag: {
-                                type: 'string'
-                            },
-                            os: {
-                                type: 'string',
-                                oneOf: [
-                                    'windows',
-                                    'linux',
-                                    'macos',
-                                    'all'
-                                ],
-                                default: 'all'
-                            },
-                            arch: {
-                                type: 'string',
-                                oneOf: [
-                                    'x86',
-                                    'x86_64',
-                                    'all'
-                                ],
-                                default: 'all'
-                            },
-                            language: {
-                                type: 'string',
-                                default: 'all'
-                            },
-                            country: {
-                                type: 'string',
-                                default: 'all'
-                            },
-                            customVersion: {
-                                default: 'none'
-                            }
-                        }
-                    }
-                })
-                .expect(200);
-            should.exist(bucketsResult.body);
-            bucketsResult.body.should.be.an('object');
-        });
-    });
-
-    describe('get /buckets/:bucketName', async () => {
-        // get bucket0 -> Error 404
-        step('should not get inexistent bucket', async () => {
-            return await supertest(context.server.app)
-                .get('/buckets/bucket0')
-                .set({ Authorization: context.initialToken })
-                .expect(404);
-        });
-
-        // get bucket1 -> bucket1
-        step('should get bucket 1', async () => {
-            const bucketsResult = await supertest(context.server.app)
-                .get('/buckets/bucket1')
-                .set({ Authorization: context.initialToken })
-                .expect(200);
-            should.exist(bucketsResult.body);
-            bucketsResult.body.should.be.an('object');
-            bucketsResult.body.name.should.be.an('string').equal('bucket1');
-        });
-    });
-
-    describe('put /buckets/:bucketName/artifacts/:artifactName/:version?', async () => {
-        // put bucket1/artifact1/1.0 -> bucket1/artifact1/1.0
-        step('should create an artifact with version 1.0', async () => {
-            const result = await supertest(context.server.app)
-                .put('/buckets/bucket1/artifacts/artifact1/1.0')
-                .set({ Authorization: context.initialToken })
-                .attach('artifact', path.resolve(__dirname, 'file.zip'))
-                .expect(200);
-            should.exist(result.body);
-            result.body.should.be.an('object');
-            result.body.version.should.be.an('string').equal('1.0');
-            context.lastUpdate = result.body.lastUpdate;
-        });
-
-        // put bucket1/artifact1/1.0 -> bucket1/artifact1/1.0 with a greater lastUpdate
-        step('should create an artifact with version 1.0 but with a greater lastUpdate', async () => {
-            const result = await supertest(context.server.app)
-                .put('/buckets/bucket1/artifacts/artifact1/1.0')
-                .set({ Authorization: context.initialToken })
-                .attach('artifact', path.resolve(__dirname, 'file.zip'))
-                .expect(200);
-            should.exist(result.body);
-            result.body.should.be.an('object');
-            result.body.version.should.be.an('string').equal('1.0');
-            Date.parse(result.body.lastUpdate).should.be.greaterThan(Date.parse(context.lastUpdate));
-        });
-
-        // put bucket1/artifact1/2.0 -> bucket1/artifact1/2.0
-        step('should create an artifact with version 2.0', async () => {
-            const result = await supertest(context.server.app)
-                .put('/buckets/bucket1/artifacts/artifact1/2.0')
-                .set({ Authorization: context.initialToken })
-                .attach('artifact', path.resolve(__dirname, 'file.zip'))
-                .expect(200);
-            should.exist(result.body);
-            result.body.should.be.an('object');
-            result.body.version.should.be.an('string').equal('2.0');
-        });
-
-        // put bucket1/artifact3/1.0?os=linux -> bucket1/artifact3/1.0?os=linux&arch=all
-        step('should create an artifact with version 1.0 and metadata os=linux', async () => {
-            const result = await supertest(context.server.app)
-                .put('/buckets/bucket1/artifacts/artifact3/1.0')
-                .set({ Authorization: context.initialToken })
-                .field({
-                    os: 'linux'
-                })
-                .attach('artifact', path.resolve(__dirname, 'file.zip'))
-                .expect(200);
-            should.exist(result.body);
-            result.body.should.be.an('object');
-            result.body.version.should.be.an('string').equal('1.0');
-            result.body.metadata.should.be.an('object');
-            result.body.metadata.os.should.be.equal('linux');
-            result.body.metadata.arch.should.be.equal('all');
-        });
-
-        // put bucket1/artifact3/1.0?os=linux&arch=x86 -> bucket1/artifact3/1.0?os=linux&arch=x86
-        step('should create an artifact with version 1.0 and metadata os=linux and arch=x86', async () => {
-            const result = await supertest(context.server.app)
-                .put('/buckets/bucket1/artifacts/artifact3/1.0')
-                .set({ Authorization: context.initialToken })
-                .field({
-                    os: 'linux',
-                    arch: 'x86'
-                })
-                .attach('artifact', path.resolve(__dirname, 'file.zip'))
-                .expect(200);
-            should.exist(result.body);
-            result.body.should.be.an('object');
-            result.body.version.should.be.an('string').equal('1.0');
-            result.body.metadata.should.be.an('object');
-            result.body.metadata.os.should.be.equal('linux');
-            result.body.metadata.arch.should.be.equal('x86');
-        });
-
-        // put bucket1/artifact3/1.0?os=macos -> bucket1/artifact3/1.0?os=macos&arch=all
-        step('should create an artifact with version 1.0 and metadata os=macos', async () => {
-            const result = await supertest(context.server.app)
-                .put('/buckets/bucket1/artifacts/artifact3/1.0')
-                .set({ Authorization: context.initialToken })
-                .field({
-                    os: 'macos'
-                })
-                .attach('artifact', path.resolve(__dirname, 'file.zip'))
-                .expect(200);
-            should.exist(result.body);
-            result.body.should.be.an('object');
-            result.body.version.should.be.an('string').equal('1.0');
-            result.body.metadata.should.be.an('object');
-            result.body.metadata.os.should.be.equal('macos');
-            result.body.metadata.arch.should.be.equal('all');
-        });
-
-        // put bucket1/artifact3/1.0?os=windows&arch=x86 -> bucket1/artifact3/1.0?os=windows&arch=x86
-        step('should create an artifact with version 1.0 and metadata os=windows and arch=x86', async () => {
-            const result = await supertest(context.server.app)
-                .put('/buckets/bucket1/artifacts/artifact3/1.0')
-                .set({ Authorization: context.initialToken })
-                .field({
-                    os: 'windows',
-                    arch: 'x86'
-                })
-                .attach('artifact', path.resolve(__dirname, 'file.zip'))
-                .expect(200);
-            should.exist(result.body);
-            result.body.should.be.an('object');
-            result.body.version.should.be.an('string').equal('1.0');
-            result.body.metadata.should.be.an('object');
-            result.body.metadata.os.should.be.equal('windows');
-            result.body.metadata.arch.should.be.equal('x86');
-        });
-    });
-
-    describe('get /buckets/:bucketName/artifacts/:artifactName/:version? (application/zip)', async () => {
-        // get zip bucket1/artifact1 -> bucket1/artifact1/2.0?os=all&arch=all
-        step('should get the artifact 1 without specifying the version', async () => {
-            const result = await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact1')
-                .set({ Authorization: context.initialToken })
-                .accept('application/zip')
-                .buffer(true)
-                .responseType('blob')
-                .expect(200);
-            should.exist(result);
-            result.type.should.be.equal('application/zip');
-            result.body.should.be.an.instanceof(Buffer);
-            result.headers['content-disposition'].should.include('artifact1-2.0-undefined-all-all-all-all-none.zip');
-        });
-
-        // get zip bucket1/artifact1/latest -> bucket1/artifact1/2.0?os=all&arch=all
-        step('should get the latest artifact 1', async () => {
-            const result = await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact1/latest')
-                .set({ Authorization: context.initialToken })
-                .accept('application/zip')
-                .buffer(true)
-                .responseType('blob')
-                .expect(200);
-            should.exist(result);
-            result.type.should.be.equal('application/zip');
-            result.body.should.be.an.instanceof(Buffer);
-            result.headers['content-disposition'].should.include('artifact1-2.0-undefined-all-all-all-all-none.zip');
-        });
-
-        // get zip bucket1/artifact1/oldest -> bucket1/artifact1/1.0?os=all&arch=all
-        step('should get the oldest artifact 1', async () => {
-            const result = await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact1/oldest')
-                .set({ Authorization: context.initialToken })
-                .accept('application/zip')
-                .buffer(true)
-                .responseType('blob')
-                .expect(200);
-            should.exist(result);
-            result.type.should.be.equal('application/zip');
-            result.body.should.be.an.instanceof(Buffer);
-            result.headers['content-disposition'].should.include('artifact1-1.0-undefined-all-all-all-all-none.zip');
-        });
-
-        // get zip bucket1/artifact1/1.0 -> bucket1/artifact1/1.0?os=all&arch=all
-        step('should get the artifact 1 with version 1.0', async () => {
-            const result = await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact1/1.0')
-                .set({ Authorization: context.initialToken })
-                .accept('application/zip')
-                .buffer(true)
-                .responseType('blob')
-                .expect(200);
-            should.exist(result);
-            result.type.should.be.equal('application/zip');
-            result.body.should.be.an.instanceof(Buffer);
-            result.headers['content-disposition'].should.include('artifact1-1.0-undefined-all-all-all-all-none.zip');
-        });
-
-        // get zip bucket1/artifact1/2.0 -> bucket1/artifact1/2.0?os=all&arch=all
-        step('should get the artifact 1 with version 2.0', async () => {
-            const result = await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact1/2.0')
-                .set({ Authorization: context.initialToken })
-                .accept('application/zip')
-                .buffer(true)
-                .responseType('blob')
-                .expect(200);
-            should.exist(result);
-            result.type.should.be.equal('application/zip');
-            result.body.should.be.an.instanceof(Buffer);
-            result.headers['content-disposition'].should.include('artifact1-2.0-undefined-all-all-all-all-none.zip');
-        });
-
-        // get zip bucket1/artifact1/3.0 -> Error 404
-        step('should not get the artifact 1 with version 3.0', async () => {
-            return await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact1/3.0')
-                .set({ Authorization: context.initialToken })
-                .accept('application/zip')
-                .buffer(true)
-                .responseType('blob')
-                .expect(404);
-        });
-
-        // get zip bucket1/artifact2 -> Error 404        
-        step('should not get the artifact 2 without specifying the version', async () => {
-            return await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact2')
-                .set({ Authorization: context.initialToken })
-                .accept('application/zip')
-                .buffer(true)
-                .responseType('blob')
-                .expect(404);
-        });
-
-        // get zip bucket1/artifact2/latest -> Error 404
-        step('should not get the latest artifact 2', async () => {
-            return await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact2/latest')
-                .set({ Authorization: context.initialToken })
-                .accept('application/zip')
-                .buffer(true)
-                .responseType('blob')
-                .expect(404);
-        });
-
-        // get zip bucket1/artifact2/oldest -> Error 404
-        step('should not get the oldest artifact 2', async () => {
-            return await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact2/oldest')
-                .set({ Authorization: context.initialToken })
-                .accept('application/zip')
-                .buffer(true)
-                .responseType('blob')
-                .expect(404);
-        });
-
-        // get zip bucket1/artifact3/1.0?os=linux -> bucket1/artifact3/1.0?os=linux&arch=all
-        step('should get the artifact 3 with version 1.0 and metadata os=linux', async () => {
-            const result = await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact3/1.0?os=linux')
-                .set({ Authorization: context.initialToken })
-                .accept('application/zip')
-                .buffer(true)
-                .responseType('blob')
-                .expect(200);
-            should.exist(result);
-            result.type.should.be.equal('application/zip');
-            result.body.should.be.an.instanceof(Buffer);
-            result.headers['content-disposition'].should.include('artifact3-1.0-undefined-linux-all-all-all-none.zip');
-        });
-
-        // get zip bucket1/artifact3/1.0?os=linux&arch=x86 -> bucket1/artifact3/1.0?os=linux&arch=x86
-        step('should get the artifact 3 with version 1.0 and metadata os=linux and arch=x86', async () => {
-            const result = await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact3/1.0?os=linux&arch=x86')
-                .set({ Authorization: context.initialToken })
-                .accept('application/zip')
-                .buffer(true)
-                .responseType('blob')
-                .expect(200);
-            should.exist(result);
-            result.type.should.be.equal('application/zip');
-            result.body.should.be.an.instanceof(Buffer);
-            result.headers['content-disposition'].should.include('artifact3-1.0-undefined-linux-x86-all-all-none.zip');
-        });
-
-        // get zip bucket1/artifact3/1.0?os=macos -> bucket1/artifact3/1.0?os=macos&arch=all
-        step('should get the artifact 3 with version 1.0 and metadata os=macos', async () => {
-            const result = await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact3/1.0?os=macos')
-                .set({ Authorization: context.initialToken })
-                .accept('application/zip')
-                .buffer(true)
-                .responseType('blob')
-                .expect(200);
-            should.exist(result);
-            result.type.should.be.equal('application/zip');
-            result.body.should.be.an.instanceof(Buffer);
-            result.headers['content-disposition'].should.include('artifact3-1.0-undefined-macos-all-all-all-none.zip');
-        });
-
-        // get zip bucket1/artifact3/1.0?os=latest -> bucket1/artifact3/1.0?os=macos&arch=all
-        step('should get the artifact 3 with version 1.0 and metadata os=latest', async () => {
-            const result = await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact3/1.0?os=latest')
-                .set({ Authorization: context.initialToken })
-                .accept('application/zip')
-                .buffer(true)
-                .responseType('blob')
-                .expect(200);
-            should.exist(result);
-            result.type.should.be.equal('application/zip');
-            result.body.should.be.an.instanceof(Buffer);
-            result.headers['content-disposition'].should.include('artifact3-1.0-undefined-macos-all-all-all-none.zip');
-        });
-
-        // get zip bucket1/artifact3/1.0?os=windows -> bucket1/artifact3/1.0?os=windows&arch=all -> Error 404
-        step('should get the artifact 3 with version 1.0 and metadata os=windows', async () => {
-            return await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact3/1.0?os=windows')
-                .set({ Authorization: context.initialToken })
-                .accept('application/zip')
-                .buffer(true)
-                .responseType('blob')
-                .expect(404);
-        });
-
-        // get zip bucket1/artifact3/1.0?os=all -> bucket1/artifact3/1.0?os=all&arch=all -> Error 404
-        step('should get the artifact 3 with version 1.0 and metadata os=all', async () => {
-            return await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact3/1.0?os=all')
-                .set({ Authorization: context.initialToken })
-                .accept('application/zip')
-                .buffer(true)
-                .responseType('blob')
-                .expect(404);
-        });
-    });
-
-    describe('get /artifacts/search', async () => {
-        // get bucket1/artifact1 -> [bucket1/artifact1/1.0, bucket1/artifact1/2.0]
-        step('should get all artifacts 1 without specifying a version', async () => {
-            const result = await supertest(context.server.app)
-                .get('/artifacts/search?bucket=bucket1&artifact=artifact1')
-                .set({ Authorization: context.initialToken })
-                .accept('application/json')
-                .expect(200);
-            should.exist(result.body);
-            result.body.should.be.an('array').and.to.have.lengthOf(2);
-            result.body[0].should.be.deep.equal(
-                {
-                    bucket: 'bucket1',
-                    name: 'artifact1',
-                    version: '2.0',
-                    normalizedVersion: '0000000002.0000000000',
-                    path: path.normalize('bucket1/artifact1-2.0-undefined-all-all-all-all-none.zip'),
-                    fileSize: 561,
-                    lastUpdate: result.body[0].lastUpdate,
-                    metadata: { arch: 'all', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
-                });
-            result.body[1].should.be.deep.equal(
-                {
-                    bucket: 'bucket1',
-                    name: 'artifact1',
-                    version: '1.0',
-                    normalizedVersion: '0000000001.0000000000',
-                    path: path.normalize('bucket1/artifact1-1.0-undefined-all-all-all-all-none.zip'),
-                    fileSize: 561,
-                    lastUpdate: result.body[1].lastUpdate,
-                    metadata: { arch: 'all', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
-                });
-        });
-
-        // get bucket1/artifact2 -> []
-        step('should not get the artifact 2', async () => {
-            return await supertest(context.server.app)
-                .get('/artifacts/search?bucket=bucket1&artifact=artifact2')
-                .set({ Authorization: context.initialToken })
-                .accept('application/json')
-                .expect(200);
-        });
-
-        // get bucket1/artifact1/latest -> [ bucket1/artifact1/2.0, bucket1/artifact1/1.0 ]
-        step('should get the latest artifacts 1', async () => {
-            const result = await supertest(context.server.app)
-                .get('/artifacts/search?bucket=bucket1&artifact=artifact1&version=latest')
-                .set({ Authorization: context.initialToken })
-                .accept('application/json')
-                .expect(200);
-            should.exist(result.body);
-            result.body.should.be.an('array').and.to.have.lengthOf(2);
-            result.body[0].should.be.deep.equal(
-                {
-                    bucket: 'bucket1',
-                    name: 'artifact1',
-                    version: '2.0',
-                    normalizedVersion: '0000000002.0000000000',
-                    path: path.normalize('bucket1/artifact1-2.0-undefined-all-all-all-all-none.zip'),
-                    fileSize: 561,
-                    lastUpdate: result.body[0].lastUpdate,
-                    metadata: { arch: 'all', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
-                });
-            result.body[1].should.be.deep.equal(
-                {
-                    bucket: 'bucket1',
-                    name: 'artifact1',
-                    version: '1.0',
-                    normalizedVersion: '0000000001.0000000000',
-                    path: path.normalize('bucket1/artifact1-1.0-undefined-all-all-all-all-none.zip'),
-                    fileSize: 561,
-                    lastUpdate: result.body[1].lastUpdate,
-                    metadata: { arch: 'all', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
-                });
-        });
-
-        // get bucket1/artifact1/oldest -> [ bucket1/artifact1/1.0, bucket1/artifact1/2.0 ]
-        step('should get the oldest artifacts 1', async () => {
-            const result = await supertest(context.server.app)
-                .get('/artifacts/search?bucket=bucket1&artifact=artifact1&version=oldest')
-                .set({ Authorization: context.initialToken })
-                .accept('application/json')
-                .expect(200);
-            should.exist(result.body);
-            result.body.should.be.an('array').and.to.have.lengthOf(2);
-            result.body[0].should.be.deep.equal(
-                {
-                    bucket: 'bucket1',
-                    name: 'artifact1',
-                    version: '1.0',
-                    normalizedVersion: '0000000001.0000000000',
-                    path: path.normalize('bucket1/artifact1-1.0-undefined-all-all-all-all-none.zip'),
-                    fileSize: 561,
-                    lastUpdate: result.body[0].lastUpdate,
-                    metadata: { arch: 'all', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
-                });
-            result.body[1].should.be.deep.equal(
-                {
-                    bucket: 'bucket1',
-                    name: 'artifact1',
-                    version: '2.0',
-                    normalizedVersion: '0000000002.0000000000',
-                    path: path.normalize('bucket1/artifact1-2.0-undefined-all-all-all-all-none.zip'),
-                    fileSize: 561,
-                    lastUpdate: result.body[1].lastUpdate,
-                    metadata: { arch: 'all', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
-                });
-        });
-
-        // get bucket1/artifact1/1.0 -> [ bucket1/artifact1/1.0 ]
-        step('should get the artifacts 1 with version 1.0', async () => {
-            const result = await supertest(context.server.app)
-                .get('/artifacts/search?bucket=bucket1&artifact=artifact1&version=1.0')
-                .set({ Authorization: context.initialToken })
-                .accept('application/json')
-                .expect(200);
-            should.exist(result.body);
-            result.body.should.be.an('array').and.to.have.lengthOf(1);
-            result.body[0].should.be.deep.equal(
-                {
-                    bucket: 'bucket1',
-                    name: 'artifact1',
-                    version: '1.0',
-                    normalizedVersion: '0000000001.0000000000',
-                    path: path.normalize('bucket1/artifact1-1.0-undefined-all-all-all-all-none.zip'),
-                    fileSize: 561,
-                    lastUpdate: result.body[0].lastUpdate,
-                    metadata: { arch: 'all', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
-                });
-        });
-
-        // get bucket1/artifact1/2.0 -> [ bucket1/artifact1/2.0 ]
-        step('should get the artifacts 1 with version 2.0', async () => {
-            const result = await supertest(context.server.app)
-                .get('/artifacts/search?bucket=bucket1&artifact=artifact1&version=2.0')
-                .set({ Authorization: context.initialToken })
-                .accept('application/json')
-                .expect(200);
-            should.exist(result.body);
-            result.body.should.be.an('array').and.to.have.lengthOf(1);
-            result.body[0].should.be.deep.equal(
-                {
-                    bucket: 'bucket1',
-                    name: 'artifact1',
-                    version: '2.0',
-                    normalizedVersion: '0000000002.0000000000',
-                    path: path.normalize('bucket1/artifact1-2.0-undefined-all-all-all-all-none.zip'),
-                    fileSize: 561,
-                    lastUpdate: result.body[0].lastUpdate,
-                    metadata: { arch: 'all', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
-                });
-        });
-
-        // get bucket1/artifact1/3.0 -> []
-        step('should not get artifacts 1 with version 3.0', async () => {
-            const result = await supertest(context.server.app)
-                .get('/artifacts/search?bucket=bucket1&artifact=artifact1&version=3.0')
-                .set({ Authorization: context.initialToken })
-                .accept('application/json')
-                .expect(200);
-            should.exist(result.body);
-            result.body.should.be.an('array').and.to.have.lengthOf(0);
-        });
-
-        // get bucket1/artifact1/1.0?arch=x2 -> Error 400
-        step('should not get artifact 1 using invalid metadata', async () => {
-            const result = await supertest(context.server.app)
-                .get('/artifacts/search?bucket=bucket1&artifact=artifact1&version=1.0&arch=x2')
-                .set({ Authorization: context.initialToken })
-                .accept('application/json')
-                .expect(200);
-            should.exist(result.body);
-            result.body.should.be.an('array').and.to.have.lengthOf(0);
-        });
-
-        // get bucket1/artifact3/1.0 -> [ bucket1/artifact3/1.0?os=linux&arch=all, bucket1/artifact3/1.0?os=linux&arch=x86, bucket1/artifact3/1.0?os=x86&arch=all, bucket1/artifact3/1.0?os=macos&arch=x86 ]
-        step('should get the artifacts 3 with version 1.0', async () => {
-            const result = await supertest(context.server.app)
-                .get('/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0')
-                .set({ Authorization: context.initialToken })
-                .accept('application/json')
-                .expect(200);
-            should.exist(result.body);
-            result.body.should.be.an('array').and.to.have.lengthOf(4);
-            result.body[0].should.be.deep.equal(
-                {
-                    bucket: 'bucket1',
-                    name: 'artifact3',
-                    version: '1.0',
-                    normalizedVersion: '0000000001.0000000000',
-                    path: path.normalize('bucket1/artifact3-1.0-undefined-linux-all-all-all-none.zip'),
-                    fileSize: 561,
-                    lastUpdate: result.body[0].lastUpdate,
-                    metadata: { arch: 'all', os: 'linux', language: 'all', country: 'all', customVersion: 'none' }
-                });
-            result.body[1].should.be.deep.equal(
-                {
-                    bucket: 'bucket1',
-                    name: 'artifact3',
-                    version: '1.0',
-                    normalizedVersion: '0000000001.0000000000',
-                    path: path.normalize('bucket1/artifact3-1.0-undefined-linux-x86-all-all-none.zip'),
-                    fileSize: 561,
-                    lastUpdate: result.body[1].lastUpdate,
-                    metadata: { arch: 'x86', os: 'linux', language: 'all', country: 'all', customVersion: 'none' }
-                });
-            result.body[2].should.be.deep.equal(
-                {
-                    bucket: 'bucket1',
-                    name: 'artifact3',
-                    version: '1.0',
-                    normalizedVersion: '0000000001.0000000000',
-                    path: path.normalize('bucket1/artifact3-1.0-undefined-macos-all-all-all-none.zip'),
-                    fileSize: 561,
-                    lastUpdate: result.body[2].lastUpdate,
-                    metadata: { arch: 'all', os: 'macos', language: 'all', country: 'all', customVersion: 'none' }
-                });
-            result.body[3].should.be.deep.equal(
-                {
-                    bucket: 'bucket1',
-                    name: 'artifact3',
-                    version: '1.0',
-                    normalizedVersion: '0000000001.0000000000',
-                    path: path.normalize('bucket1/artifact3-1.0-undefined-windows-x86-all-all-none.zip'),
-                    fileSize: 561,
-                    lastUpdate: result.body[3].lastUpdate,
-                    metadata: { arch: 'x86', os: 'windows', language: 'all', country: 'all', customVersion: 'none' }
-                });
-        });
-
-        // get bucket1/artifact3/1.0?os=linux -> [ bucket1/artifact3/1.0?os=linux&arch=all, bucket1/artifact3/1.0?os=linux&arch=x86 ]
-        step('should get the artifacts 3 with version 1.0 and metadata os=linux', async () => {
-            const result = await supertest(context.server.app)
-                .get('/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0&os=linux')
-                .set({ Authorization: context.initialToken })
-                .accept('application/json')
-                .expect(200);
-            should.exist(result.body);
-            result.body.should.be.an('array').and.to.have.lengthOf(2);
-            result.body[0].should.be.deep.equal(
-                {
-                    bucket: 'bucket1',
-                    name: 'artifact3',
-                    version: '1.0',
-                    normalizedVersion: '0000000001.0000000000',
-                    path: path.normalize('bucket1/artifact3-1.0-undefined-linux-all-all-all-none.zip'),
-                    fileSize: 561,
-                    lastUpdate: result.body[0].lastUpdate,
-                    metadata: { arch: 'all', os: 'linux', language: 'all', country: 'all', customVersion: 'none' }
-                });
-            result.body[1].should.be.deep.equal(
-                {
-                    bucket: 'bucket1',
-                    name: 'artifact3',
-                    version: '1.0',
-                    normalizedVersion: '0000000001.0000000000',
-                    path: path.normalize('bucket1/artifact3-1.0-undefined-linux-x86-all-all-none.zip'),
-                    fileSize: 561,
-                    lastUpdate: result.body[1].lastUpdate,
-                    metadata: { arch: 'x86', os: 'linux', language: 'all', country: 'all', customVersion: 'none' }
-                });
-        });
-
-        // get bucket1/artifact3/1.0?os=linux&arch=x86 -> [ bucket1/artifact3/1.0?os=linux&arch=x86 ]
-        step('should get the artifacts 3 with version 1.0 and metadata os=linux and arch=x86', async () => {
-            const result = await supertest(context.server.app)
-                .get('/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0&os=linux&arch=x86')
-                .set({ Authorization: context.initialToken })
-                .accept('application/json')
-                .expect(200);
-            should.exist(result.body);
-            result.body.should.be.an('array').and.to.have.lengthOf(1);
-            result.body[0].should.be.deep.equal(
-                {
-                    bucket: 'bucket1',
-                    name: 'artifact3',
-                    version: '1.0',
-                    normalizedVersion: '0000000001.0000000000',
-                    path: path.normalize('bucket1/artifact3-1.0-undefined-linux-x86-all-all-none.zip'),
-                    fileSize: 561,
-                    lastUpdate: result.body[0].lastUpdate,
-                    metadata: { arch: 'x86', os: 'linux', language: 'all', country: 'all', customVersion: 'none' }
-                });
-        });
-
-        // get bucket1/artifact3/1.0?os=macos -> [ bucket1/artifact3/1.0?os=macos&arch=all ]
-        step('should get the artifacts 3 with version 1.0 and metadata os=macos', async () => {
-            const result = await supertest(context.server.app)
-                .get('/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0&os=macos')
-                .set({ Authorization: context.initialToken })
-                .accept('application/json')
-                .expect(200);
-            should.exist(result.body);
-            result.body.should.be.an('array').and.to.have.lengthOf(1);
-            result.body[0].should.be.deep.equal(
-                {
-                    bucket: 'bucket1',
-                    name: 'artifact3',
-                    version: '1.0',
-                    normalizedVersion: '0000000001.0000000000',
-                    path: path.normalize('bucket1/artifact3-1.0-undefined-macos-all-all-all-none.zip'),
-                    fileSize: 561,
-                    lastUpdate: result.body[0].lastUpdate,
-                    metadata: { arch: 'all', os: 'macos', language: 'all', country: 'all', customVersion: 'none' }
-                });
-        });
-
-        // get bucket1/artifact3/1.0?os=macos&arch=all -> [ bucket1/artifact3/1.0?os=macos&arch=all ]
-        step('should get the artifacts 3 with version 1.0 and metadata os=macos and arch=all', async () => {
-            const result = await supertest(context.server.app)
-                .get('/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0&os=macos&arch=all')
-                .set({ Authorization: context.initialToken })
-                .accept('application/json')
-                .expect(200);
-            should.exist(result.body);
-            result.body.should.be.an('array').and.to.have.lengthOf(1);
-            result.body[0].should.be.deep.equal(
-                {
-                    bucket: 'bucket1',
-                    name: 'artifact3',
-                    version: '1.0',
-                    normalizedVersion: '0000000001.0000000000',
-                    path: path.normalize('bucket1/artifact3-1.0-undefined-macos-all-all-all-none.zip'),
-                    fileSize: 561,
-                    lastUpdate: result.body[0].lastUpdate,
-                    metadata: { arch: 'all', os: 'macos', language: 'all', country: 'all', customVersion: 'none' }
-                });
-        });
-
-        // get bucket1/artifact3/1.0?os=latest -> [ bucket1/artifact3/1.0?os=linux&arch=all, bucket1/artifact3/1.0?os=linux&arch=x86, bucket1/artifact3/1.0?os=x86&arch=all, bucket1/artifact3/1.0?os=macos&arch=x86 ]
-        step('should get the artifacts 3 with version 1.0 and metadata os=latest', async () => {
-            const result = await supertest(context.server.app)
-                .get('/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0&os=latest')
-                .set({ Authorization: context.initialToken })
-                .accept('application/json')
-                .expect(200);
-            should.exist(result.body);
-            result.body.should.be.an('array').and.to.have.lengthOf(4);
-            result.body[0].should.be.deep.equal(
-                {
-                    bucket: 'bucket1',
-                    name: 'artifact3',
-                    version: '1.0',
-                    normalizedVersion: '0000000001.0000000000',
-                    path: path.normalize('bucket1/artifact3-1.0-undefined-windows-x86-all-all-none.zip'),
-                    fileSize: 561,
-                    lastUpdate: result.body[0].lastUpdate,
-                    metadata: { arch: 'x86', os: 'windows', language: 'all', country: 'all', customVersion: 'none' }
-                });
-            result.body[1].should.be.deep.equal(
-                {
-                    bucket: 'bucket1',
-                    name: 'artifact3',
-                    version: '1.0',
-                    normalizedVersion: '0000000001.0000000000',
-                    path: path.normalize('bucket1/artifact3-1.0-undefined-macos-all-all-all-none.zip'),
-                    fileSize: 561,
-                    lastUpdate: result.body[1].lastUpdate,
-                    metadata: { arch: 'all', os: 'macos', language: 'all', country: 'all', customVersion: 'none' }
-                });
-            result.body[2].should.be.deep.equal(
-                {
-                    bucket: 'bucket1',
-                    name: 'artifact3',
-                    version: '1.0',
-                    normalizedVersion: '0000000001.0000000000',
-                    path: path.normalize('bucket1/artifact3-1.0-undefined-linux-all-all-all-none.zip'),
-                    fileSize: 561,
-                    lastUpdate: result.body[2].lastUpdate,
-                    metadata: { arch: 'all', os: 'linux', language: 'all', country: 'all', customVersion: 'none' }
-                });
-            result.body[3].should.be.deep.equal(
-                {
-                    bucket: 'bucket1',
-                    name: 'artifact3',
-                    version: '1.0',
-                    normalizedVersion: '0000000001.0000000000',
-                    path: path.normalize('bucket1/artifact3-1.0-undefined-linux-x86-all-all-none.zip'),
-                    fileSize: 561,
-                    lastUpdate: result.body[3].lastUpdate,
-                    metadata: { arch: 'x86', os: 'linux', language: 'all', country: 'all', customVersion: 'none' }
-                });
-
-        });
-
-        // get bucket1/artifact3/1.0?os=windows -> [ bucket1/artifact3/1.0?os=windows&arch=x86 ]
-        step('should get the artifacts 3 with version 1.0 and metadata os=windows and arch=x86', async () => {
-            const result = await supertest(context.server.app)
-                .get('/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0&os=windows')
-                .set({ Authorization: context.initialToken })
-                .accept('application/json')
-                .expect(200);
-            should.exist(result.body);
-            result.body.should.be.an('array').and.to.have.lengthOf(1);
-            result.body[0].should.be.deep.equal(
-                {
-                    bucket: 'bucket1',
-                    name: 'artifact3',
-                    version: '1.0',
-                    normalizedVersion: '0000000001.0000000000',
-                    path: path.normalize('bucket1/artifact3-1.0-undefined-windows-x86-all-all-none.zip'),
-                    fileSize: 561,
-                    lastUpdate: result.body[0].lastUpdate,
-                    metadata: { arch: 'x86', os: 'windows', language: 'all', country: 'all', customVersion: 'none' }
-                });
-        });
-
-        // get bucket1/artifact3/1.0?os=all -> []
-        step('should not get the artifacts 3 with os=all', async () => {
-            const result = await supertest(context.server.app)
-                .get('/artifacts/search?bucket=bucket1&artifact=artifact1&version=3.0')
-                .set({ Authorization: context.initialToken })
-                .accept('application/json')
-                .expect(200);
-            should.exist(result.body);
-            result.body.should.be.an('array').and.to.have.lengthOf(0);
-        });
-
-        // get bucket1/artifacts -> [6]
-        step('should get all artifacts from bucket1', async () => {
-            const result = await supertest(context.server.app)
-                .get('/artifacts/search?bucket=bucket1')
-                .set({ Authorization: context.initialToken })
-                .accept('application/json')
-                .expect(200);
-            should.exist(result.body);
-            result.body.should.be.an('array').and.to.have.lengthOf(6);
-        });
-    });
-
-    describe('delete /buckets/:bucketName/artifacts/:artifactName/:version?', async () => {
-        // delete bucket1/artifact1/1.0 -> bucket1/artifact1/1.0
-        step('should delete  artifacts 1 version 1.0', async () => {
-            const deleteResult = await supertest(context.server.app)
-                .delete('/buckets/bucket1/artifacts/artifact1/1.0')
-                .set({ Authorization: context.initialToken })
-                .expect(200);
-            should.exist(deleteResult.body);
-            deleteResult.body.should.be.an('object');
-            deleteResult.body.should.be.deep.equal(
-                {
-                    bucket: 'bucket1',
-                    name: 'artifact1',
-                    version: '1.0',
-                    normalizedVersion: '0000000001.0000000000',
-                    path: path.normalize('bucket1/artifact1-1.0-undefined-all-all-all-all-none.zip'),
-                    fileSize: 561,
-                    lastUpdate: deleteResult.body.lastUpdate,
-                    metadata: { arch: 'all', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
-                });
-
-            const getResult = await supertest(context.server.app)
-                .get('/artifacts/search?bucket=bucket1&artifact=artifact1')
-                .accept('application/json')
-                .expect(200);
-            should.exist(getResult.body);
-            getResult.body.should.be.an('array').and.to.have.lengthOf(1);
-        });
-    });
-
-    // TODO: Set the event which the webhook will be called
-    describe('post /webhook', async () => {
-        step('should post a webhook', async () => {
-            const webhookCreationResult = await supertest(context.server.app)
-                .post('/webhooks')
-                .send({
-                    bucket: 'bucket1',
-                    artifact: 'artifact5',
-                    endpoint: 'http://localhost:5673/webhook'
-                })
-                .expect(200);
-            should.exist(webhookCreationResult.body);
-            webhookCreationResult.body.should.be.an('object');
-            webhookCreationResult.body.bucket.should.not.be.empty;
         });
     });
 
@@ -1226,42 +336,915 @@ describe('HTTPServer', async () => {
                 .expect(403);
         });
 
-        /*
-        , [
-            {
-                'url': 'ldap://ldap.forumsys.com:389',
-                'bindDN': 'cn=read-only-admin,dc=example,dc=com',
-                'bindCredentials': 'password',
-                'searchBase': 'ou=mathematicians,dc=example,dc=com',
-                'searchFilter': '(uid={{username}})'
-            }]
+        step('update config adding ldap', async () => {
+            context.authService.ldapConfig = [{
+                url: 'ldap://ldap.forumsys.com:389',
+                bindDN: 'cn=read-only-admin,dc=example,dc=com',
+                bindCredentials: 'password',
+                searchBase: 'dc=example,dc=com',
+                searchFilter: '(uid={{username}})'
+            }];
+        });
 
-            step('update config adding ldap', async () => {
-        context.config.ldap = {
-            url: 'ldap://ldap.forumsys.com:389',
-            bindDN: 'cn=read-only-admin,dc=example,dc=com',
-            bindCredentials: 'password',
-            searchBase: 'dc=example,dc=com',
-            searchFilter: '(uid={{username}})'
-        };
-        const configResponse = await supertest(context.server1.app)
-            .put('/admin/config')
-            .set({ Authorization: context.tokenUserAdmin1 })
-            .send(context.config)
-            .expect(200);
-        configResponse.body.should.be.an('object');
-        context.config = configResponse.body;
-        context.authService.ldapConfig = context.config.ldap;
+        step('get token for ldap user 1', async () => {
+            const tokenResponse = await supertest(context.server.app)
+                .post('/tokens')
+                .send(context.userLDAPUser1)
+                .expect(200);
+            context.tokenUserLDAPUser1 = tokenResponse.body.token;
+        });
     });
 
-    step('get token for ldap user 1', async () => {
-        const tokenResponse = await supertest(context.server1.app)
-            .post('/tokens')
-            .send(context.userLDAPUser1)
-            .expect(200);
-        context.tokenUserLDAPUser1 = tokenResponse.body.token;
+    describe('get /buckets', async () => {
+        // get buckets -> []
+        step('should get buckets', async () => {
+            const bucketsResult = await supertest(context.server.app)
+                .get('/buckets')
+                .set({ Authorization: context.tokenUserUser1 })
+                .expect(200);
+            should.exist(bucketsResult.body);
+            bucketsResult.body.should.be.an('array').and.to.have.lengthOf(0);
+        });
     });
-            */
+
+    describe('post /buckets', async () => {
+        // post bucket1 -> bucket1
+        step('should create the bucket 1', async () => {
+            const bucketsResult = await supertest(context.server.app)
+                .post('/buckets')
+                .set({ Authorization: context.tokenUserUser1 })
+                .send({
+                    name: 'bucket1',
+                    retentionPolicy: [{
+                        filter: {
+                            name: 'artifact',
+                            version: '1.0',
+                            metadata: {
+                                os: 'all'
+                            }
+                        },
+                        totalSize: '1MB',
+                        fileCount: 5,
+                        age: '15 days'
+                    }],
+                    template: {
+                        fileName: '{name}-{version}-{tag}-{os}-{arch}-{language}-{country}-{customVersion}.zip',
+                        properties: {
+                            tag: {
+                                type: 'string'
+                            },
+                            os: {
+                                type: 'string',
+                                oneOf: [
+                                    'windows',
+                                    'linux',
+                                    'macos',
+                                    'all'
+                                ],
+                                default: 'all'
+                            },
+                            arch: {
+                                type: 'string',
+                                oneOf: [
+                                    'x86',
+                                    'x86_64',
+                                    'all'
+                                ],
+                                default: 'all'
+                            },
+                            language: {
+                                type: 'string',
+                                default: 'all'
+                            },
+                            country: {
+                                type: 'string',
+                                default: 'all'
+                            },
+                            customVersion: {
+                                default: 'none'
+                            }
+                        }
+                    }
+                })
+                .expect(200);
+            should.exist(bucketsResult.body);
+            bucketsResult.body.should.be.an('object');
+        });
+    });
+
+    describe('get /buckets/:bucketName', async () => {
+        // get bucket0 -> Error 404
+        step('should not get inexistent bucket', async () => {
+            return await supertest(context.server.app)
+                .get('/buckets/bucket0')
+                .set({ Authorization: context.tokenUserUser1 })
+                .expect(404);
+        });
+
+        // get bucket1 -> bucket1
+        step('should get bucket 1', async () => {
+            const bucketsResult = await supertest(context.server.app)
+                .get('/buckets/bucket1')
+                .set({ Authorization: context.tokenUserUser1 })
+                .expect(200);
+            should.exist(bucketsResult.body);
+            bucketsResult.body.should.be.an('object');
+            bucketsResult.body.name.should.be.an('string').equal('bucket1');
+        });
+    });
+
+    describe('put /buckets/:bucketName/artifacts/:artifactName/:version?', async () => {
+        // put bucket1/artifact1/1.0 -> bucket1/artifact1/1.0
+        step('should create an artifact with version 1.0', async () => {
+            const result = await supertest(context.server.app)
+                .put('/buckets/bucket1/artifacts/artifact1/1.0')
+                .set({ Authorization: context.tokenUserUser1 })
+                .attach('artifact', path.resolve(__dirname, 'file.zip'))
+                .expect(200);
+            should.exist(result.body);
+            result.body.should.be.an('object');
+            result.body.version.should.be.an('string').equal('1.0');
+            context.lastUpdate = result.body.lastUpdate;
+        });
+
+        // put bucket1/artifact1/1.0 -> bucket1/artifact1/1.0 with a greater lastUpdate
+        step('should create an artifact with version 1.0 but with a greater lastUpdate', async () => {
+            const result = await supertest(context.server.app)
+                .put('/buckets/bucket1/artifacts/artifact1/1.0')
+                .set({ Authorization: context.tokenUserUser1 })
+                .attach('artifact', path.resolve(__dirname, 'file.zip'))
+                .expect(200);
+            should.exist(result.body);
+            result.body.should.be.an('object');
+            result.body.version.should.be.an('string').equal('1.0');
+            Date.parse(result.body.lastUpdate).should.be.greaterThan(Date.parse(context.lastUpdate));
+        });
+
+        // put bucket1/artifact1/2.0 -> bucket1/artifact1/2.0
+        step('should create an artifact with version 2.0', async () => {
+            const result = await supertest(context.server.app)
+                .put('/buckets/bucket1/artifacts/artifact1/2.0')
+                .set({ Authorization: context.tokenUserUser1 })
+                .attach('artifact', path.resolve(__dirname, 'file.zip'))
+                .expect(200);
+            should.exist(result.body);
+            result.body.should.be.an('object');
+            result.body.version.should.be.an('string').equal('2.0');
+        });
+
+        // put bucket1/artifact3/1.0?os=linux -> bucket1/artifact3/1.0?os=linux&arch=all
+        step('should create an artifact with version 1.0 and metadata os=linux', async () => {
+            const result = await supertest(context.server.app)
+                .put('/buckets/bucket1/artifacts/artifact3/1.0')
+                .set({ Authorization: context.tokenUserUser1 })
+                .field({
+                    os: 'linux'
+                })
+                .attach('artifact', path.resolve(__dirname, 'file.zip'))
+                .expect(200);
+            should.exist(result.body);
+            result.body.should.be.an('object');
+            result.body.version.should.be.an('string').equal('1.0');
+            result.body.metadata.should.be.an('object');
+            result.body.metadata.os.should.be.equal('linux');
+            result.body.metadata.arch.should.be.equal('all');
+        });
+
+        // put bucket1/artifact3/1.0?os=linux&arch=x86 -> bucket1/artifact3/1.0?os=linux&arch=x86
+        step('should create an artifact with version 1.0 and metadata os=linux and arch=x86', async () => {
+            const result = await supertest(context.server.app)
+                .put('/buckets/bucket1/artifacts/artifact3/1.0')
+                .set({ Authorization: context.tokenUserUser1 })
+                .field({
+                    os: 'linux',
+                    arch: 'x86'
+                })
+                .attach('artifact', path.resolve(__dirname, 'file.zip'))
+                .expect(200);
+            should.exist(result.body);
+            result.body.should.be.an('object');
+            result.body.version.should.be.an('string').equal('1.0');
+            result.body.metadata.should.be.an('object');
+            result.body.metadata.os.should.be.equal('linux');
+            result.body.metadata.arch.should.be.equal('x86');
+        });
+
+        // put bucket1/artifact3/1.0?os=macos -> bucket1/artifact3/1.0?os=macos&arch=all
+        step('should create an artifact with version 1.0 and metadata os=macos', async () => {
+            const result = await supertest(context.server.app)
+                .put('/buckets/bucket1/artifacts/artifact3/1.0')
+                .set({ Authorization: context.tokenUserUser1 })
+                .field({
+                    os: 'macos'
+                })
+                .attach('artifact', path.resolve(__dirname, 'file.zip'))
+                .expect(200);
+            should.exist(result.body);
+            result.body.should.be.an('object');
+            result.body.version.should.be.an('string').equal('1.0');
+            result.body.metadata.should.be.an('object');
+            result.body.metadata.os.should.be.equal('macos');
+            result.body.metadata.arch.should.be.equal('all');
+        });
+
+        // put bucket1/artifact3/1.0?os=windows&arch=x86 -> bucket1/artifact3/1.0?os=windows&arch=x86
+        step('should create an artifact with version 1.0 and metadata os=windows and arch=x86', async () => {
+            const result = await supertest(context.server.app)
+                .put('/buckets/bucket1/artifacts/artifact3/1.0')
+                .set({ Authorization: context.tokenUserUser1 })
+                .field({
+                    os: 'windows',
+                    arch: 'x86'
+                })
+                .attach('artifact', path.resolve(__dirname, 'file.zip'))
+                .expect(200);
+            should.exist(result.body);
+            result.body.should.be.an('object');
+            result.body.version.should.be.an('string').equal('1.0');
+            result.body.metadata.should.be.an('object');
+            result.body.metadata.os.should.be.equal('windows');
+            result.body.metadata.arch.should.be.equal('x86');
+        });
+    });
+
+    describe('get /buckets/:bucketName/artifacts/:artifactName/:version? (application/zip)', async () => {
+        // get zip bucket1/artifact1 -> bucket1/artifact1/2.0?os=all&arch=all
+        step('should get the artifact 1 without specifying the version', async () => {
+            const result = await supertest(context.server.app)
+                .get('/buckets/bucket1/artifacts/artifact1')
+                .set({ Authorization: context.tokenUserUser1 })
+                .accept('application/zip')
+                .buffer(true)
+                .responseType('blob')
+                .expect(200);
+            should.exist(result);
+            result.type.should.be.equal('application/zip');
+            result.body.should.be.an.instanceof(Buffer);
+            result.headers['content-disposition'].should.include('artifact1-2.0-undefined-all-all-all-all-none.zip');
+        });
+
+        // get zip bucket1/artifact1/latest -> bucket1/artifact1/2.0?os=all&arch=all
+        step('should get the latest artifact 1', async () => {
+            const result = await supertest(context.server.app)
+                .get('/buckets/bucket1/artifacts/artifact1/latest')
+                .set({ Authorization: context.tokenUserUser1 })
+                .accept('application/zip')
+                .buffer(true)
+                .responseType('blob')
+                .expect(200);
+            should.exist(result);
+            result.type.should.be.equal('application/zip');
+            result.body.should.be.an.instanceof(Buffer);
+            result.headers['content-disposition'].should.include('artifact1-2.0-undefined-all-all-all-all-none.zip');
+        });
+
+        // get zip bucket1/artifact1/oldest -> bucket1/artifact1/1.0?os=all&arch=all
+        step('should get the oldest artifact 1', async () => {
+            const result = await supertest(context.server.app)
+                .get('/buckets/bucket1/artifacts/artifact1/oldest')
+                .set({ Authorization: context.tokenUserUser1 })
+                .accept('application/zip')
+                .buffer(true)
+                .responseType('blob')
+                .expect(200);
+            should.exist(result);
+            result.type.should.be.equal('application/zip');
+            result.body.should.be.an.instanceof(Buffer);
+            result.headers['content-disposition'].should.include('artifact1-1.0-undefined-all-all-all-all-none.zip');
+        });
+
+        // get zip bucket1/artifact1/1.0 -> bucket1/artifact1/1.0?os=all&arch=all
+        step('should get the artifact 1 with version 1.0', async () => {
+            const result = await supertest(context.server.app)
+                .get('/buckets/bucket1/artifacts/artifact1/1.0')
+                .set({ Authorization: context.tokenUserUser1 })
+                .accept('application/zip')
+                .buffer(true)
+                .responseType('blob')
+                .expect(200);
+            should.exist(result);
+            result.type.should.be.equal('application/zip');
+            result.body.should.be.an.instanceof(Buffer);
+            result.headers['content-disposition'].should.include('artifact1-1.0-undefined-all-all-all-all-none.zip');
+        });
+
+        // get zip bucket1/artifact1/2.0 -> bucket1/artifact1/2.0?os=all&arch=all
+        step('should get the artifact 1 with version 2.0', async () => {
+            const result = await supertest(context.server.app)
+                .get('/buckets/bucket1/artifacts/artifact1/2.0')
+                .set({ Authorization: context.tokenUserUser1 })
+                .accept('application/zip')
+                .buffer(true)
+                .responseType('blob')
+                .expect(200);
+            should.exist(result);
+            result.type.should.be.equal('application/zip');
+            result.body.should.be.an.instanceof(Buffer);
+            result.headers['content-disposition'].should.include('artifact1-2.0-undefined-all-all-all-all-none.zip');
+        });
+
+        // get zip bucket1/artifact1/3.0 -> Error 404
+        step('should not get the artifact 1 with version 3.0', async () => {
+            return await supertest(context.server.app)
+                .get('/buckets/bucket1/artifacts/artifact1/3.0')
+                .set({ Authorization: context.tokenUserUser1 })
+                .accept('application/zip')
+                .buffer(true)
+                .responseType('blob')
+                .expect(404);
+        });
+
+        // get zip bucket1/artifact2 -> Error 404        
+        step('should not get the artifact 2 without specifying the version', async () => {
+            return await supertest(context.server.app)
+                .get('/buckets/bucket1/artifacts/artifact2')
+                .set({ Authorization: context.tokenUserUser1 })
+                .accept('application/zip')
+                .buffer(true)
+                .responseType('blob')
+                .expect(404);
+        });
+
+        // get zip bucket1/artifact2/latest -> Error 404
+        step('should not get the latest artifact 2', async () => {
+            return await supertest(context.server.app)
+                .get('/buckets/bucket1/artifacts/artifact2/latest')
+                .set({ Authorization: context.tokenUserUser1 })
+                .accept('application/zip')
+                .buffer(true)
+                .responseType('blob')
+                .expect(404);
+        });
+
+        // get zip bucket1/artifact2/oldest -> Error 404
+        step('should not get the oldest artifact 2', async () => {
+            return await supertest(context.server.app)
+                .get('/buckets/bucket1/artifacts/artifact2/oldest')
+                .set({ Authorization: context.tokenUserUser1 })
+                .accept('application/zip')
+                .buffer(true)
+                .responseType('blob')
+                .expect(404);
+        });
+
+        // get zip bucket1/artifact3/1.0?os=linux -> bucket1/artifact3/1.0?os=linux&arch=all
+        step('should get the artifact 3 with version 1.0 and metadata os=linux', async () => {
+            const result = await supertest(context.server.app)
+                .get('/buckets/bucket1/artifacts/artifact3/1.0?os=linux')
+                .set({ Authorization: context.tokenUserUser1 })
+                .accept('application/zip')
+                .buffer(true)
+                .responseType('blob')
+                .expect(200);
+            should.exist(result);
+            result.type.should.be.equal('application/zip');
+            result.body.should.be.an.instanceof(Buffer);
+            result.headers['content-disposition'].should.include('artifact3-1.0-undefined-linux-all-all-all-none.zip');
+        });
+
+        // get zip bucket1/artifact3/1.0?os=linux&arch=x86 -> bucket1/artifact3/1.0?os=linux&arch=x86
+        step('should get the artifact 3 with version 1.0 and metadata os=linux and arch=x86', async () => {
+            const result = await supertest(context.server.app)
+                .get('/buckets/bucket1/artifacts/artifact3/1.0?os=linux&arch=x86')
+                .set({ Authorization: context.tokenUserUser1 })
+                .accept('application/zip')
+                .buffer(true)
+                .responseType('blob')
+                .expect(200);
+            should.exist(result);
+            result.type.should.be.equal('application/zip');
+            result.body.should.be.an.instanceof(Buffer);
+            result.headers['content-disposition'].should.include('artifact3-1.0-undefined-linux-x86-all-all-none.zip');
+        });
+
+        // get zip bucket1/artifact3/1.0?os=macos -> bucket1/artifact3/1.0?os=macos&arch=all
+        step('should get the artifact 3 with version 1.0 and metadata os=macos', async () => {
+            const result = await supertest(context.server.app)
+                .get('/buckets/bucket1/artifacts/artifact3/1.0?os=macos')
+                .set({ Authorization: context.tokenUserUser1 })
+                .accept('application/zip')
+                .buffer(true)
+                .responseType('blob')
+                .expect(200);
+            should.exist(result);
+            result.type.should.be.equal('application/zip');
+            result.body.should.be.an.instanceof(Buffer);
+            result.headers['content-disposition'].should.include('artifact3-1.0-undefined-macos-all-all-all-none.zip');
+        });
+
+        // get zip bucket1/artifact3/1.0?os=latest -> bucket1/artifact3/1.0?os=macos&arch=all
+        step('should get the artifact 3 with version 1.0 and metadata os=latest', async () => {
+            const result = await supertest(context.server.app)
+                .get('/buckets/bucket1/artifacts/artifact3/1.0?os=latest')
+                .set({ Authorization: context.tokenUserUser1 })
+                .accept('application/zip')
+                .buffer(true)
+                .responseType('blob')
+                .expect(200);
+            should.exist(result);
+            result.type.should.be.equal('application/zip');
+            result.body.should.be.an.instanceof(Buffer);
+            result.headers['content-disposition'].should.include('artifact3-1.0-undefined-macos-all-all-all-none.zip');
+        });
+
+        // get zip bucket1/artifact3/1.0?os=windows -> bucket1/artifact3/1.0?os=windows&arch=all -> Error 404
+        step('should get the artifact 3 with version 1.0 and metadata os=windows', async () => {
+            return await supertest(context.server.app)
+                .get('/buckets/bucket1/artifacts/artifact3/1.0?os=windows')
+                .set({ Authorization: context.tokenUserUser1 })
+                .accept('application/zip')
+                .buffer(true)
+                .responseType('blob')
+                .expect(404);
+        });
+
+        // get zip bucket1/artifact3/1.0?os=all -> bucket1/artifact3/1.0?os=all&arch=all -> Error 404
+        step('should get the artifact 3 with version 1.0 and metadata os=all', async () => {
+            return await supertest(context.server.app)
+                .get('/buckets/bucket1/artifacts/artifact3/1.0?os=all')
+                .set({ Authorization: context.tokenUserUser1 })
+                .accept('application/zip')
+                .buffer(true)
+                .responseType('blob')
+                .expect(404);
+        });
+    });
+
+    describe('get /artifacts/search', async () => {
+        // get bucket1/artifact1 -> [bucket1/artifact1/1.0, bucket1/artifact1/2.0]
+        step('should get all artifacts 1 without specifying a version', async () => {
+            const result = await supertest(context.server.app)
+                .get('/artifacts/search?bucket=bucket1&artifact=artifact1')
+                .set({ Authorization: context.tokenUserUser1 })
+                .accept('application/json')
+                .expect(200);
+            should.exist(result.body);
+            result.body.should.be.an('array').and.to.have.lengthOf(2);
+            result.body[0].should.be.deep.equal(
+                {
+                    bucket: 'bucket1',
+                    name: 'artifact1',
+                    version: '2.0',
+                    normalizedVersion: '0000000002.0000000000',
+                    path: path.normalize('bucket1/artifact1-2.0-undefined-all-all-all-all-none.zip'),
+                    fileSize: 561,
+                    lastUpdate: result.body[0].lastUpdate,
+                    metadata: { arch: 'all', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
+                });
+            result.body[1].should.be.deep.equal(
+                {
+                    bucket: 'bucket1',
+                    name: 'artifact1',
+                    version: '1.0',
+                    normalizedVersion: '0000000001.0000000000',
+                    path: path.normalize('bucket1/artifact1-1.0-undefined-all-all-all-all-none.zip'),
+                    fileSize: 561,
+                    lastUpdate: result.body[1].lastUpdate,
+                    metadata: { arch: 'all', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
+                });
+        });
+
+        // get bucket1/artifact2 -> []
+        step('should not get the artifact 2', async () => {
+            return await supertest(context.server.app)
+                .get('/artifacts/search?bucket=bucket1&artifact=artifact2')
+                .set({ Authorization: context.tokenUserUser1 })
+                .accept('application/json')
+                .expect(200);
+        });
+
+        // get bucket1/artifact1/latest -> [ bucket1/artifact1/2.0, bucket1/artifact1/1.0 ]
+        step('should get the latest artifacts 1', async () => {
+            const result = await supertest(context.server.app)
+                .get('/artifacts/search?bucket=bucket1&artifact=artifact1&version=latest')
+                .set({ Authorization: context.tokenUserUser1 })
+                .accept('application/json')
+                .expect(200);
+            should.exist(result.body);
+            result.body.should.be.an('array').and.to.have.lengthOf(2);
+            result.body[0].should.be.deep.equal(
+                {
+                    bucket: 'bucket1',
+                    name: 'artifact1',
+                    version: '2.0',
+                    normalizedVersion: '0000000002.0000000000',
+                    path: path.normalize('bucket1/artifact1-2.0-undefined-all-all-all-all-none.zip'),
+                    fileSize: 561,
+                    lastUpdate: result.body[0].lastUpdate,
+                    metadata: { arch: 'all', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
+                });
+            result.body[1].should.be.deep.equal(
+                {
+                    bucket: 'bucket1',
+                    name: 'artifact1',
+                    version: '1.0',
+                    normalizedVersion: '0000000001.0000000000',
+                    path: path.normalize('bucket1/artifact1-1.0-undefined-all-all-all-all-none.zip'),
+                    fileSize: 561,
+                    lastUpdate: result.body[1].lastUpdate,
+                    metadata: { arch: 'all', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
+                });
+        });
+
+        // get bucket1/artifact1/oldest -> [ bucket1/artifact1/1.0, bucket1/artifact1/2.0 ]
+        step('should get the oldest artifacts 1', async () => {
+            const result = await supertest(context.server.app)
+                .get('/artifacts/search?bucket=bucket1&artifact=artifact1&version=oldest')
+                .set({ Authorization: context.tokenUserUser1 })
+                .accept('application/json')
+                .expect(200);
+            should.exist(result.body);
+            result.body.should.be.an('array').and.to.have.lengthOf(2);
+            result.body[0].should.be.deep.equal(
+                {
+                    bucket: 'bucket1',
+                    name: 'artifact1',
+                    version: '1.0',
+                    normalizedVersion: '0000000001.0000000000',
+                    path: path.normalize('bucket1/artifact1-1.0-undefined-all-all-all-all-none.zip'),
+                    fileSize: 561,
+                    lastUpdate: result.body[0].lastUpdate,
+                    metadata: { arch: 'all', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
+                });
+            result.body[1].should.be.deep.equal(
+                {
+                    bucket: 'bucket1',
+                    name: 'artifact1',
+                    version: '2.0',
+                    normalizedVersion: '0000000002.0000000000',
+                    path: path.normalize('bucket1/artifact1-2.0-undefined-all-all-all-all-none.zip'),
+                    fileSize: 561,
+                    lastUpdate: result.body[1].lastUpdate,
+                    metadata: { arch: 'all', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
+                });
+        });
+
+        // get bucket1/artifact1/1.0 -> [ bucket1/artifact1/1.0 ]
+        step('should get the artifacts 1 with version 1.0', async () => {
+            const result = await supertest(context.server.app)
+                .get('/artifacts/search?bucket=bucket1&artifact=artifact1&version=1.0')
+                .set({ Authorization: context.tokenUserUser1 })
+                .accept('application/json')
+                .expect(200);
+            should.exist(result.body);
+            result.body.should.be.an('array').and.to.have.lengthOf(1);
+            result.body[0].should.be.deep.equal(
+                {
+                    bucket: 'bucket1',
+                    name: 'artifact1',
+                    version: '1.0',
+                    normalizedVersion: '0000000001.0000000000',
+                    path: path.normalize('bucket1/artifact1-1.0-undefined-all-all-all-all-none.zip'),
+                    fileSize: 561,
+                    lastUpdate: result.body[0].lastUpdate,
+                    metadata: { arch: 'all', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
+                });
+        });
+
+        // get bucket1/artifact1/2.0 -> [ bucket1/artifact1/2.0 ]
+        step('should get the artifacts 1 with version 2.0', async () => {
+            const result = await supertest(context.server.app)
+                .get('/artifacts/search?bucket=bucket1&artifact=artifact1&version=2.0')
+                .set({ Authorization: context.tokenUserUser1 })
+                .accept('application/json')
+                .expect(200);
+            should.exist(result.body);
+            result.body.should.be.an('array').and.to.have.lengthOf(1);
+            result.body[0].should.be.deep.equal(
+                {
+                    bucket: 'bucket1',
+                    name: 'artifact1',
+                    version: '2.0',
+                    normalizedVersion: '0000000002.0000000000',
+                    path: path.normalize('bucket1/artifact1-2.0-undefined-all-all-all-all-none.zip'),
+                    fileSize: 561,
+                    lastUpdate: result.body[0].lastUpdate,
+                    metadata: { arch: 'all', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
+                });
+        });
+
+        // get bucket1/artifact1/3.0 -> []
+        step('should not get artifacts 1 with version 3.0', async () => {
+            const result = await supertest(context.server.app)
+                .get('/artifacts/search?bucket=bucket1&artifact=artifact1&version=3.0')
+                .set({ Authorization: context.tokenUserUser1 })
+                .accept('application/json')
+                .expect(200);
+            should.exist(result.body);
+            result.body.should.be.an('array').and.to.have.lengthOf(0);
+        });
+
+        // get bucket1/artifact1/1.0?arch=x2 -> Error 400
+        step('should not get artifact 1 using invalid metadata', async () => {
+            const result = await supertest(context.server.app)
+                .get('/artifacts/search?bucket=bucket1&artifact=artifact1&version=1.0&arch=x2')
+                .set({ Authorization: context.tokenUserUser1 })
+                .accept('application/json')
+                .expect(200);
+            should.exist(result.body);
+            result.body.should.be.an('array').and.to.have.lengthOf(0);
+        });
+
+        // get bucket1/artifact3/1.0 -> [ bucket1/artifact3/1.0?os=linux&arch=all, bucket1/artifact3/1.0?os=linux&arch=x86, bucket1/artifact3/1.0?os=x86&arch=all, bucket1/artifact3/1.0?os=macos&arch=x86 ]
+        step('should get the artifacts 3 with version 1.0', async () => {
+            const result = await supertest(context.server.app)
+                .get('/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0')
+                .set({ Authorization: context.tokenUserUser1 })
+                .accept('application/json')
+                .expect(200);
+            should.exist(result.body);
+            result.body.should.be.an('array').and.to.have.lengthOf(4);
+            result.body[0].should.be.deep.equal(
+                {
+                    bucket: 'bucket1',
+                    name: 'artifact3',
+                    version: '1.0',
+                    normalizedVersion: '0000000001.0000000000',
+                    path: path.normalize('bucket1/artifact3-1.0-undefined-linux-all-all-all-none.zip'),
+                    fileSize: 561,
+                    lastUpdate: result.body[0].lastUpdate,
+                    metadata: { arch: 'all', os: 'linux', language: 'all', country: 'all', customVersion: 'none' }
+                });
+            result.body[1].should.be.deep.equal(
+                {
+                    bucket: 'bucket1',
+                    name: 'artifact3',
+                    version: '1.0',
+                    normalizedVersion: '0000000001.0000000000',
+                    path: path.normalize('bucket1/artifact3-1.0-undefined-linux-x86-all-all-none.zip'),
+                    fileSize: 561,
+                    lastUpdate: result.body[1].lastUpdate,
+                    metadata: { arch: 'x86', os: 'linux', language: 'all', country: 'all', customVersion: 'none' }
+                });
+            result.body[2].should.be.deep.equal(
+                {
+                    bucket: 'bucket1',
+                    name: 'artifact3',
+                    version: '1.0',
+                    normalizedVersion: '0000000001.0000000000',
+                    path: path.normalize('bucket1/artifact3-1.0-undefined-macos-all-all-all-none.zip'),
+                    fileSize: 561,
+                    lastUpdate: result.body[2].lastUpdate,
+                    metadata: { arch: 'all', os: 'macos', language: 'all', country: 'all', customVersion: 'none' }
+                });
+            result.body[3].should.be.deep.equal(
+                {
+                    bucket: 'bucket1',
+                    name: 'artifact3',
+                    version: '1.0',
+                    normalizedVersion: '0000000001.0000000000',
+                    path: path.normalize('bucket1/artifact3-1.0-undefined-windows-x86-all-all-none.zip'),
+                    fileSize: 561,
+                    lastUpdate: result.body[3].lastUpdate,
+                    metadata: { arch: 'x86', os: 'windows', language: 'all', country: 'all', customVersion: 'none' }
+                });
+        });
+
+        // get bucket1/artifact3/1.0?os=linux -> [ bucket1/artifact3/1.0?os=linux&arch=all, bucket1/artifact3/1.0?os=linux&arch=x86 ]
+        step('should get the artifacts 3 with version 1.0 and metadata os=linux', async () => {
+            const result = await supertest(context.server.app)
+                .get('/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0&os=linux')
+                .set({ Authorization: context.tokenUserUser1 })
+                .accept('application/json')
+                .expect(200);
+            should.exist(result.body);
+            result.body.should.be.an('array').and.to.have.lengthOf(2);
+            result.body[0].should.be.deep.equal(
+                {
+                    bucket: 'bucket1',
+                    name: 'artifact3',
+                    version: '1.0',
+                    normalizedVersion: '0000000001.0000000000',
+                    path: path.normalize('bucket1/artifact3-1.0-undefined-linux-all-all-all-none.zip'),
+                    fileSize: 561,
+                    lastUpdate: result.body[0].lastUpdate,
+                    metadata: { arch: 'all', os: 'linux', language: 'all', country: 'all', customVersion: 'none' }
+                });
+            result.body[1].should.be.deep.equal(
+                {
+                    bucket: 'bucket1',
+                    name: 'artifact3',
+                    version: '1.0',
+                    normalizedVersion: '0000000001.0000000000',
+                    path: path.normalize('bucket1/artifact3-1.0-undefined-linux-x86-all-all-none.zip'),
+                    fileSize: 561,
+                    lastUpdate: result.body[1].lastUpdate,
+                    metadata: { arch: 'x86', os: 'linux', language: 'all', country: 'all', customVersion: 'none' }
+                });
+        });
+
+        // get bucket1/artifact3/1.0?os=linux&arch=x86 -> [ bucket1/artifact3/1.0?os=linux&arch=x86 ]
+        step('should get the artifacts 3 with version 1.0 and metadata os=linux and arch=x86', async () => {
+            const result = await supertest(context.server.app)
+                .get('/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0&os=linux&arch=x86')
+                .set({ Authorization: context.tokenUserUser1 })
+                .accept('application/json')
+                .expect(200);
+            should.exist(result.body);
+            result.body.should.be.an('array').and.to.have.lengthOf(1);
+            result.body[0].should.be.deep.equal(
+                {
+                    bucket: 'bucket1',
+                    name: 'artifact3',
+                    version: '1.0',
+                    normalizedVersion: '0000000001.0000000000',
+                    path: path.normalize('bucket1/artifact3-1.0-undefined-linux-x86-all-all-none.zip'),
+                    fileSize: 561,
+                    lastUpdate: result.body[0].lastUpdate,
+                    metadata: { arch: 'x86', os: 'linux', language: 'all', country: 'all', customVersion: 'none' }
+                });
+        });
+
+        // get bucket1/artifact3/1.0?os=macos -> [ bucket1/artifact3/1.0?os=macos&arch=all ]
+        step('should get the artifacts 3 with version 1.0 and metadata os=macos', async () => {
+            const result = await supertest(context.server.app)
+                .get('/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0&os=macos')
+                .set({ Authorization: context.tokenUserUser1 })
+                .accept('application/json')
+                .expect(200);
+            should.exist(result.body);
+            result.body.should.be.an('array').and.to.have.lengthOf(1);
+            result.body[0].should.be.deep.equal(
+                {
+                    bucket: 'bucket1',
+                    name: 'artifact3',
+                    version: '1.0',
+                    normalizedVersion: '0000000001.0000000000',
+                    path: path.normalize('bucket1/artifact3-1.0-undefined-macos-all-all-all-none.zip'),
+                    fileSize: 561,
+                    lastUpdate: result.body[0].lastUpdate,
+                    metadata: { arch: 'all', os: 'macos', language: 'all', country: 'all', customVersion: 'none' }
+                });
+        });
+
+        // get bucket1/artifact3/1.0?os=macos&arch=all -> [ bucket1/artifact3/1.0?os=macos&arch=all ]
+        step('should get the artifacts 3 with version 1.0 and metadata os=macos and arch=all', async () => {
+            const result = await supertest(context.server.app)
+                .get('/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0&os=macos&arch=all')
+                .set({ Authorization: context.tokenUserUser1 })
+                .accept('application/json')
+                .expect(200);
+            should.exist(result.body);
+            result.body.should.be.an('array').and.to.have.lengthOf(1);
+            result.body[0].should.be.deep.equal(
+                {
+                    bucket: 'bucket1',
+                    name: 'artifact3',
+                    version: '1.0',
+                    normalizedVersion: '0000000001.0000000000',
+                    path: path.normalize('bucket1/artifact3-1.0-undefined-macos-all-all-all-none.zip'),
+                    fileSize: 561,
+                    lastUpdate: result.body[0].lastUpdate,
+                    metadata: { arch: 'all', os: 'macos', language: 'all', country: 'all', customVersion: 'none' }
+                });
+        });
+
+        // get bucket1/artifact3/1.0?os=latest -> [ bucket1/artifact3/1.0?os=linux&arch=all, bucket1/artifact3/1.0?os=linux&arch=x86, bucket1/artifact3/1.0?os=x86&arch=all, bucket1/artifact3/1.0?os=macos&arch=x86 ]
+        step('should get the artifacts 3 with version 1.0 and metadata os=latest', async () => {
+            const result = await supertest(context.server.app)
+                .get('/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0&os=latest')
+                .set({ Authorization: context.tokenUserUser1 })
+                .accept('application/json')
+                .expect(200);
+            should.exist(result.body);
+            result.body.should.be.an('array').and.to.have.lengthOf(4);
+            result.body[0].should.be.deep.equal(
+                {
+                    bucket: 'bucket1',
+                    name: 'artifact3',
+                    version: '1.0',
+                    normalizedVersion: '0000000001.0000000000',
+                    path: path.normalize('bucket1/artifact3-1.0-undefined-windows-x86-all-all-none.zip'),
+                    fileSize: 561,
+                    lastUpdate: result.body[0].lastUpdate,
+                    metadata: { arch: 'x86', os: 'windows', language: 'all', country: 'all', customVersion: 'none' }
+                });
+            result.body[1].should.be.deep.equal(
+                {
+                    bucket: 'bucket1',
+                    name: 'artifact3',
+                    version: '1.0',
+                    normalizedVersion: '0000000001.0000000000',
+                    path: path.normalize('bucket1/artifact3-1.0-undefined-macos-all-all-all-none.zip'),
+                    fileSize: 561,
+                    lastUpdate: result.body[1].lastUpdate,
+                    metadata: { arch: 'all', os: 'macos', language: 'all', country: 'all', customVersion: 'none' }
+                });
+            result.body[2].should.be.deep.equal(
+                {
+                    bucket: 'bucket1',
+                    name: 'artifact3',
+                    version: '1.0',
+                    normalizedVersion: '0000000001.0000000000',
+                    path: path.normalize('bucket1/artifact3-1.0-undefined-linux-all-all-all-none.zip'),
+                    fileSize: 561,
+                    lastUpdate: result.body[2].lastUpdate,
+                    metadata: { arch: 'all', os: 'linux', language: 'all', country: 'all', customVersion: 'none' }
+                });
+            result.body[3].should.be.deep.equal(
+                {
+                    bucket: 'bucket1',
+                    name: 'artifact3',
+                    version: '1.0',
+                    normalizedVersion: '0000000001.0000000000',
+                    path: path.normalize('bucket1/artifact3-1.0-undefined-linux-x86-all-all-none.zip'),
+                    fileSize: 561,
+                    lastUpdate: result.body[3].lastUpdate,
+                    metadata: { arch: 'x86', os: 'linux', language: 'all', country: 'all', customVersion: 'none' }
+                });
+
+        });
+
+        // get bucket1/artifact3/1.0?os=windows -> [ bucket1/artifact3/1.0?os=windows&arch=x86 ]
+        step('should get the artifacts 3 with version 1.0 and metadata os=windows and arch=x86', async () => {
+            const result = await supertest(context.server.app)
+                .get('/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0&os=windows')
+                .set({ Authorization: context.tokenUserUser1 })
+                .accept('application/json')
+                .expect(200);
+            should.exist(result.body);
+            result.body.should.be.an('array').and.to.have.lengthOf(1);
+            result.body[0].should.be.deep.equal(
+                {
+                    bucket: 'bucket1',
+                    name: 'artifact3',
+                    version: '1.0',
+                    normalizedVersion: '0000000001.0000000000',
+                    path: path.normalize('bucket1/artifact3-1.0-undefined-windows-x86-all-all-none.zip'),
+                    fileSize: 561,
+                    lastUpdate: result.body[0].lastUpdate,
+                    metadata: { arch: 'x86', os: 'windows', language: 'all', country: 'all', customVersion: 'none' }
+                });
+        });
+
+        // get bucket1/artifact3/1.0?os=all -> []
+        step('should not get the artifacts 3 with os=all', async () => {
+            const result = await supertest(context.server.app)
+                .get('/artifacts/search?bucket=bucket1&artifact=artifact1&version=3.0')
+                .set({ Authorization: context.tokenUserUser1 })
+                .accept('application/json')
+                .expect(200);
+            should.exist(result.body);
+            result.body.should.be.an('array').and.to.have.lengthOf(0);
+        });
+
+        // get bucket1/artifacts -> [6]
+        step('should get all artifacts from bucket1', async () => {
+            const result = await supertest(context.server.app)
+                .get('/artifacts/search?bucket=bucket1')
+                .set({ Authorization: context.tokenUserUser1 })
+                .accept('application/json')
+                .expect(200);
+            should.exist(result.body);
+            result.body.should.be.an('array').and.to.have.lengthOf(6);
+        });
+    });
+
+    describe('delete /buckets/:bucketName/artifacts/:artifactName/:version?', async () => {
+        // delete bucket1/artifact1/1.0 -> bucket1/artifact1/1.0
+        step('should delete  artifacts 1 version 1.0', async () => {
+            const deleteResult = await supertest(context.server.app)
+                .delete('/buckets/bucket1/artifacts/artifact1/1.0')
+                .set({ Authorization: context.tokenUserUser1 })
+                .expect(200);
+            should.exist(deleteResult.body);
+            deleteResult.body.should.be.an('object');
+            deleteResult.body.should.be.deep.equal(
+                {
+                    bucket: 'bucket1',
+                    name: 'artifact1',
+                    version: '1.0',
+                    normalizedVersion: '0000000001.0000000000',
+                    path: path.normalize('bucket1/artifact1-1.0-undefined-all-all-all-all-none.zip'),
+                    fileSize: 561,
+                    lastUpdate: deleteResult.body.lastUpdate,
+                    metadata: { arch: 'all', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
+                });
+
+            const getResult = await supertest(context.server.app)
+                .get('/artifacts/search?bucket=bucket1&artifact=artifact1')
+                .accept('application/json')
+                .expect(200);
+            should.exist(getResult.body);
+            getResult.body.should.be.an('array').and.to.have.lengthOf(1);
+        });
+    });
+
+    // TODO: Set the event which the webhook will be called
+    describe('post /webhook', async () => {
+        step('should post a webhook', async () => {
+            const webhookCreationResult = await supertest(context.server.app)
+                .post('/webhooks')
+                .send({
+                    bucket: 'bucket1',
+                    artifact: 'artifact5',
+                    endpoint: 'http://localhost:5673/webhook'
+                })
+                .expect(200);
+            should.exist(webhookCreationResult.body);
+            webhookCreationResult.body.should.be.an('object');
+            webhookCreationResult.body.bucket.should.not.be.empty;
+        });
     });
 
     describe('features', async () => {
