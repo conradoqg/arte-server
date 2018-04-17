@@ -431,13 +431,76 @@ describe('HTTPServer', async () => {
             bucketsResult.body.should.be.an('object');
         });
 
-        // post bucket2 -> 403
-        step('should not create the bucket 2 using guest 1', async () => {
+        // post bucket2 -> bucket2
+        step('should create the bucket 2 using user 1', async () => {
+            const bucketsResult = await supertest(context.server.app)
+                .post('/buckets')
+                .set({ Authorization: context.tokenUserUser1 })
+                .send({
+                    name: 'bucket2',
+                    retentionPolicy: [{
+                        filter: {
+                            name: 'artifact',
+                            version: '1.0',
+                            metadata: {
+                                os: 'all'
+                            }
+                        },
+                        totalSize: '1MB',
+                        fileCount: 5,
+                        age: '15 days'
+                    }],
+                    template: {
+                        fileName: '{name}-{version}-{tag}-{os}-{arch}-{language}-{country}-{customVersion}.zip',
+                        properties: {
+                            tag: {
+                                type: 'string'
+                            },
+                            os: {
+                                type: 'string',
+                                oneOf: [
+                                    'windows',
+                                    'linux',
+                                    'macos',
+                                    'all'
+                                ],
+                                default: 'all'
+                            },
+                            arch: {
+                                type: 'string',
+                                oneOf: [
+                                    'x86',
+                                    'x86_64',
+                                    'all'
+                                ],
+                                default: 'all'
+                            },
+                            language: {
+                                type: 'string',
+                                default: 'all'
+                            },
+                            country: {
+                                type: 'string',
+                                default: 'all'
+                            },
+                            customVersion: {
+                                default: 'none'
+                            }
+                        }
+                    }
+                })
+                .expect(200);
+            should.exist(bucketsResult.body);
+            bucketsResult.body.should.be.an('object');
+        });
+
+        // post bucket3 -> 403
+        step('should not create the bucket 3 using guest 1', async () => {
             return await supertest(context.server.app)
                 .post('/buckets')
                 .set({ Authorization: context.tokenUserGuest1 })
                 .send({
-                    name: 'bucket2'
+                    name: 'bucket3'
                 })
                 .expect(403);
         });
@@ -1264,6 +1327,47 @@ describe('HTTPServer', async () => {
             should.exist(webhookCreationResult.body);
             webhookCreationResult.body.should.be.an('object');
             webhookCreationResult.body.bucket.should.not.be.empty;
+        });
+    });
+
+    describe('post /tokens/grants', async () => {
+        step('should create a grant token for user granted 1 using user 1', async () => {
+            const tokenResponse = await supertest(context.server.app)
+                .post('/tokens/grants')
+                .set({ Authorization: context.tokenUserUser1 })
+                .send({
+                    username: 'Granted1',
+                    grants: {
+                        buckets: ['bucket1'],
+                        artifactsCreate: true,
+                        artifactUpdate: true,
+                        artifactsRemove: true
+                    }
+                })
+                .expect(200);
+            context.tokenUserGranted1 = tokenResponse.body.token;
+        });
+
+        // put bucket1/artifact1/1.0 using granted 1 on bucket 1 -> bucket1/artifact1/1.0
+        step('should create an artifact with version 1.0 using granted 1 on bucket 1', async () => {
+            const result = await supertest(context.server.app)
+                .put('/buckets/bucket1/artifacts/artifact1/1.0')
+                .set({ Authorization: context.tokenUserGranted1 })
+                .attach('artifact', path.resolve(__dirname, 'file.zip'))
+                .expect(200);
+            should.exist(result.body);
+            result.body.should.be.an('object');
+            result.body.version.should.be.an('string').equal('1.0');
+            context.lastUpdate = result.body.lastUpdate;
+        });
+
+        // put bucket1/artifact1/1.0 using granted 1 on bucket 2 -> 403
+        step('should not create an artifact with version 1.0 using granted 1 on bucket 2', async () => {
+            return await supertest(context.server.app)
+                .put('/buckets/bucket2/artifacts/artifact1/1.0')
+                .set({ Authorization: context.tokenUserGranted1 })
+                .attach('artifact', path.resolve(__dirname, 'file.zip'))
+                .expect(403);
         });
     });
 
