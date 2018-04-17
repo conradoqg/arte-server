@@ -275,6 +275,16 @@ describe('HTTPServer', async () => {
         });
     });
 
+    describe('get /tokens/:token', async () => {
+        step('should get token data from user 1 token', async () => {
+            const tokenDataResponse = await supertest(context.server.app)
+                .get(`/tokens/${context.tokenUserUser1}`)
+                .expect(200);
+            should.exist(tokenDataResponse.body);
+            tokenDataResponse.body.should.be.an('object');
+        });
+    });
+
     describe('put /users', async () => {
         step('should change user 2 password using user 2', async () => {
             const newPassword = chance.string({ length: 6 });
@@ -1341,7 +1351,7 @@ describe('HTTPServer', async () => {
                         buckets: ['bucket1'],
                         artifactsCreate: true,
                         artifactUpdate: true,
-                        artifactsRemove: true
+                        artifactRemove: true
                     }
                 })
                 .expect(200);
@@ -1351,7 +1361,7 @@ describe('HTTPServer', async () => {
         // put bucket1/artifact1/1.0 using granted 1 on bucket 1 -> bucket1/artifact1/1.0
         step('should create an artifact with version 1.0 using granted 1 on bucket 1', async () => {
             const result = await supertest(context.server.app)
-                .put('/buckets/bucket1/artifacts/artifact1/1.0')
+                .put('/buckets/bucket1/artifacts/artifact6/1.0')
                 .set({ Authorization: context.tokenUserGranted1 })
                 .attach('artifact', path.resolve(__dirname, 'file.zip'))
                 .expect(200);
@@ -1368,6 +1378,14 @@ describe('HTTPServer', async () => {
                 .set({ Authorization: context.tokenUserGranted1 })
                 .attach('artifact', path.resolve(__dirname, 'file.zip'))
                 .expect(403);
+        });
+
+        // put bucket1/artifact1/1.0 using granted 1 on bucket 1 -> bucket1/artifact1/1.0
+        step('should remove artifact6 using granted 1 on bucket 1', async () => {
+            return await supertest(context.server.app)
+                .delete('/buckets/bucket1/artifacts/artifact6/1.0')
+                .set({ Authorization: context.tokenUserGranted1 })
+                .expect(200);
         });
     });
 
