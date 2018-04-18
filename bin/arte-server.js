@@ -12,6 +12,8 @@ const argv = yargs
     .describe('m', 'Mongo URL (mongodb://localhost/arte-server by default)')
     .alias('s', 'storage-path')
     .describe('s', 'Storage path (data/storage by default)')
+    .alias('ldap')
+    .describe('ldap', 'Stringified JSON object array with the LDAP configuration')
     .alias('e', 'env')
     .describe('e', 'Environment type (production or development; development by default)')
     .help('h')
@@ -20,4 +22,4 @@ const argv = yargs
     .wrap(yargs.terminalWidth())
     .argv;
 
-arteServer(argv.host, argv.port, argv.logLevel, argv.mongoUrl, argv.storagePath, argv.env);
+arteServer(argv.host, argv.port, argv.logLevel, argv.mongoUrl, argv.storagePath, argv.ldap, argv.env);
