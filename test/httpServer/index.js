@@ -3,7 +3,6 @@ const should = require('chai').should();
 const supertest = require('supertest');
 const path = require('path');
 const rewire = require('rewire');
-const Chance = require('chance');
 const Config = require('../../lib/config');
 const HTTPServer = require('../../lib/httpServer');
 const DB = require('../../lib/db');
@@ -11,8 +10,6 @@ const Bucket = require('../../lib/bucket');
 const Artifact = require('../../lib/artifact');
 const Webhook = rewire('../../lib/webhook');
 const Auth = rewire('../../lib/auth');
-
-const chance = new Chance();
 
 const EMBEDDED_MONGO = true;
 const KEEP_DATABASE = false;
@@ -124,27 +121,27 @@ describe('HTTPServer', async () => {
             config,
             initialToken: await authService.getFirstTimeToken(),
             userInvalid: {
-                username: chance.email({ domain: 'totvs.com.br' }),
-                password: chance.string({ length: 5 })
+                username: 'invaliduser@totvs.com.br',
+                password: 'invaliduser'
             },
             userUser1: {
-                username: chance.email({ domain: 'totvs.com.br' }),
-                password: chance.string({ length: 6 }),
+                username: 'user1@totvs.com.br',
+                password: 'user1user1',
                 roles: ['user']
             },
             userUser2: {
-                username: chance.email({ domain: 'totvs.com.br' }),
-                password: chance.string({ length: 6 }),
+                username: 'user2@totvs.com.br',
+                password: 'user2user2',
                 roles: ['user']
             },
             userGuest1: {
-                username: chance.email({ domain: 'totvs.com.br' }),
-                password: chance.string({ length: 6 }),
+                username: 'guest1@totvs.com.br',
+                password: 'guest1guest1',
                 roles: ['guest']
             },
-            userAdmin1: {
-                username: chance.email({ domain: 'totvs.com.br' }),
-                password: chance.string({ length: 6 }),
+            userSuperuser1: {
+                username: 'superuser1@totvs.com.br',
+                password: 'superuser1superuser1',
                 roles: ['superuser']
             },
             userLDAPUser1: {
@@ -216,11 +213,11 @@ describe('HTTPServer', async () => {
                 .expect(200);
         });
 
-        step('should create user admin 1', async () => {
+        step('should create user superuser 1', async () => {
             return await supertest(context.server.app)
                 .post('/users')
                 .set({ Authorization: context.initialToken })
-                .send(context.userAdmin1)
+                .send(context.userSuperuser1)
                 .expect(200);
         });
 
@@ -239,7 +236,7 @@ describe('HTTPServer', async () => {
                 .post('/tokens')
                 .send(context.userUser1)
                 .expect(200);
-            context.tokenUserUser1 = tokenResponse.body.token;
+            context.tokenUserUser1 = tokenResponse.body.token;            
         });
 
         step('should get token for user 2', async () => {
@@ -247,7 +244,7 @@ describe('HTTPServer', async () => {
                 .post('/tokens')
                 .send(context.userUser2)
                 .expect(200);
-            context.tokenUserUser2 = tokenResponse.body.token;
+            context.tokenUserUser2 = tokenResponse.body.token;            
         });
 
         step('should get token for an invaid user', async () => {
@@ -262,16 +259,16 @@ describe('HTTPServer', async () => {
                 .post('/tokens')
                 .send(context.userGuest1)
                 .expect(200);
-            context.tokenUserGuest1 = tokenResponse.body.token;
+            context.tokenUserGuest1 = tokenResponse.body.token;            
         });
 
-        step('should get token for user admin 1', async () => {
+        step('should get token for user superuser 1', async () => {
             const tokenResponse = await supertest(context.server.app)
                 .post('/tokens')
                 .set({ Authorization: context.initialToken })
-                .send(context.userAdmin1)
+                .send(context.userSuperuser1)
                 .expect(200);
-            context.tokenUserAdmin1 = tokenResponse.body.token;
+            context.tokenUserSuperuser1 = tokenResponse.body.token;            
         });
     });
 
@@ -287,7 +284,7 @@ describe('HTTPServer', async () => {
 
     describe('put /users', async () => {
         step('should change user 2 password using user 2', async () => {
-            const newPassword = chance.string({ length: 6 });
+            const newPassword = 'user2user2';
             await supertest(context.server.app)
                 .put('/users')
                 .set({ Authorization: context.tokenUserUser2 })
@@ -320,7 +317,7 @@ describe('HTTPServer', async () => {
         step('should change user 2 role to superuser using superuser', async () => {
             await supertest(context.server.app)
                 .put('/users/')
-                .set({ Authorization: context.tokenUserAdmin1 })
+                .set({ Authorization: context.tokenUserSuperuser1 })
                 .send({
                     username: context.userUser2.username,
                     roles: ['superuser']
@@ -331,10 +328,10 @@ describe('HTTPServer', async () => {
     });
 
     describe('get /users', async () => {
-        step('should get all users using admin 1', async () => {
+        step('should get all users using superuser 1', async () => {
             const users = await supertest(context.server.app)
                 .get('/users')
-                .set({ Authorization: context.tokenUserAdmin1 })
+                .set({ Authorization: context.tokenUserSuperuser1 })
                 .expect(200);
             users.body.should.be.an('array');
         });
@@ -349,7 +346,7 @@ describe('HTTPServer', async () => {
         step('update config adding ldap', async () => {
             context.authService.ldapConfig = [{
                 url: 'ldap://ldap.forumsys.com:389',
-                bindDN: 'cn=read-only-admin,dc=example,dc=com',
+                bindDN: 'cn=read-only-superuser,dc=example,dc=com',
                 bindCredentials: 'password',
                 searchBase: 'dc=example,dc=com',
                 searchFilter: '(uid={{username}})'

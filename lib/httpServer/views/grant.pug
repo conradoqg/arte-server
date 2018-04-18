@@ -1,0 +1,59 @@
+extends layout.pug
+
+block content
+    .section
+        .container
+            .columns
+                .column.is-half.is-offset-one-quarter
+                    .box
+                        if credential && !credential.roles.includes('anonymous')                        
+                            if buckets.length > 0
+                                form(action='javascript:void(0);', onSubmit='generate();')                             
+                                    .field
+                                        label.label Username #[small (to identify the user who is going to use the token)]
+                                        .control
+                                            input.input#usernameTextbox(type='text', placeholder='username')
+                                            p.help.is-danger#usernameAlert(style='display: none;') The username cannot be empty
+                                    .field
+                                        label.label Buckets #[small (select one or multiple buckets)]
+                                        .control
+                                            .select.is-multiple
+                                                select#bucketSelect(multiple=true, size='3')
+                                                    each bucket in buckets
+                                                        option(value=`${bucket.name}`) #{bucket.name}
+                                            p.help.is-danger#bucketsAlert(style='display: none;') Choose at least one bucket
+                                    .field
+                                        label.label Permissions #[small (which actions the owner of this token can do)]
+                                        .field
+                                            .control
+                                                label.checkbox
+                                                    input#createUpdateCheckbox(type='checkbox' checked=true) 
+                                                    | Create/Update artifacts
+                                            .control
+                                                label.checkbox
+                                                    input#removeCheckbox(type='checkbox' checked=true)
+                                                    | Remove artifacts
+                                    .field.is-grouped.is-grouped-right
+                                        .control
+                                            button.button.is-primary#generateButton(type='submit') Generate
+                                    .field
+                                        label.label Token
+                                        .field.has-addons
+                                            .control
+                                                input.input#token(size="100", value="", readonly=true)
+                                            .control
+                                                a.button.copy(data-clipboard-target="#token", data-balloon="Click to copy", data-balloon-pos="up")
+                                                    span.icon
+                                                        i.fas.fa-clipboard-list
+                                    
+                            else
+                                p You don't own a bucket to generate a grant-access-token
+                            br
+                            .notification#messageBox(style='display: none;')
+                                .button.delete(onClick='message(null, null, false);')
+                                p#messageText                    
+    script
+        if env == 'development'
+            include grant.js
+        else
+            include:uglify-js grant.js

@@ -36,7 +36,10 @@ html(lang="en")
             .navbar-menu
                 .navbar-end
                     .navbar-item
-                        if credential && !credential.roles.includes('anonymous')
+                        if credential && !credential.roles.includes('anonymous')                            
+                            a.button.is-primary(href="/tokens/grants", class=`${pageTitle=='Grant' ? 'is-active' : ''}`) Grant
+                    .navbar-item
+                        if credential && !credential.roles.includes('anonymous')                            
                             a.button.is-primary(href="/logout", class=`${pageTitle=='Logout' ? 'is-active' : ''}`) Logout
                         else
                             a.button.is-primary(href="/login", class=`${pageTitle=='Login' ? 'is-active' : ''}`) Login                                
