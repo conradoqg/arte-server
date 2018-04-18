@@ -122,7 +122,7 @@ describe('HTTPServer', async () => {
             initialToken: await authService.getFirstTimeToken(),
             userInvalid: {
                 username: 'invaliduser@totvs.com.br',
-                password: 'invaliduser'
+                password: 'inv'
             },
             userUser1: {
                 username: 'user1@totvs.com.br',

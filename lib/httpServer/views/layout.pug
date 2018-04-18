@@ -34,16 +34,21 @@ html(lang="en")
                     img(src="/public/arte.png", alt="Arte", width="28", height="28")
                     .title.has-text-white.is-4 Arte
             .navbar-menu
+                .navbar-start
+                    a.navbar-item(href="/", class=`${pageTitle=='Artifact search' ? 'is-active' : ''}`)
+                            | Artifacts
+                        
                 .navbar-end                    
-                    .navbar-item
                     .navbar-item
                         if credential && !credential.roles.includes('anonymous')                            
                             .navbar-item.has-dropdown.is-hoverable
                                 a.navbar-link
                                     | #{credential.username}
-                                .navbar-dropdown
+                                .navbar-dropdown.is-right
+                                    a.navbar-item(href="/users/profile", class=`${pageTitle=='Profile' ? 'is-active' : ''}`)
+                                        | Profile
                                     a.navbar-item(href="/tokens/grants", class=`${pageTitle=='Grant' ? 'is-active' : ''}`)
-                                        | Access token
+                                        | Create a token
                                     hr.navbar-divider
                                     a.navbar-item(href="/logout", class=`${pageTitle=='Logout' ? 'is-active' : ''}`)
                                         | Logout                                    

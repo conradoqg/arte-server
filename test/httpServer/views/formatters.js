@@ -33,7 +33,7 @@ describe('Formatters', async () => {
             }
         }, 'linux');
 
-        builtCLICommand.should.be.equal('./arte get -b bucket1 -n artifact1 -v 1.0 --metadata.os linux --metadata.arch x86  --url http://localhost');
+        builtCLICommand.should.be.equal('./arte get -b bucket1 -n artifact1 -v 1.0 --metadata.os linux --metadata.arch x86   --url http://localhost');
     });
 
     it('should build CLI command for windows', async () => {
@@ -53,6 +53,6 @@ describe('Formatters', async () => {
             }
         }, 'windows');
 
-        builtCLICommand.should.be.equal('arte.exe get -b bucket1 -n artifact1 -v 1.0 --metadata.os linux --metadata.arch x86  --url http://localhost');
+        builtCLICommand.should.be.equal('arte.exe get -b bucket1 -n artifact1 -v 1.0 --metadata.os linux --metadata.arch x86   --url http://localhost');
     });
 });

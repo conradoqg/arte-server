@@ -1,0 +1,31 @@
+extends layout.pug
+
+block content
+    .section
+        .container
+            h1.title.has-text-centered Profile
+            .columns
+                .column.is-half.is-offset-one-quarter
+                    .box                        
+                        .field
+                            label.label Username
+                            .control
+                                input.input#usernameTextbox(type='text', value=`${credential.username}`, readonly)
+                        .field
+                            label.label Roles
+                            .control
+                                input.input#rolesTextbox(type='text', value=`${credential.roles.join(', ')}`, readonly)
+                        .field
+                            label.label My Token
+                            .field.has-addons
+                                .control
+                                    input.input#tokenTextbox(size="100", value=`${req.cookies.authorization}`, readonly=true)
+                                .control
+                                    a.button.copy(data-clipboard-target="#tokenTextbox", data-balloon="Click to copy", data-balloon-pos="up")
+                                        span.icon
+                                            i.fas.fa-clipboard-list
+    script
+        if env == 'development'
+            include profile.js
+        else
+            include:uglify-js profile.js
