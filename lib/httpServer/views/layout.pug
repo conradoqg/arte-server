@@ -34,13 +34,19 @@ html(lang="en")
                     img(src="/public/arte.png", alt="Arte", width="28", height="28")
                     .title.has-text-white.is-4 Arte
             .navbar-menu
-                .navbar-end
+                .navbar-end                    
+                    .navbar-item
                     .navbar-item
                         if credential && !credential.roles.includes('anonymous')                            
-                            a.button.is-primary(href="/tokens/grants", class=`${pageTitle=='Grant' ? 'is-active' : ''}`) Grant
-                    .navbar-item
-                        if credential && !credential.roles.includes('anonymous')                            
-                            a.button.is-primary(href="/logout", class=`${pageTitle=='Logout' ? 'is-active' : ''}`) Logout
+                            .navbar-item.has-dropdown.is-hoverable
+                                a.navbar-link
+                                    | #{credential.username}
+                                .navbar-dropdown
+                                    a.navbar-item(href="/tokens/grants", class=`${pageTitle=='Grant' ? 'is-active' : ''}`)
+                                        | Access token
+                                    hr.navbar-divider
+                                    a.navbar-item(href="/logout", class=`${pageTitle=='Logout' ? 'is-active' : ''}`)
+                                        | Logout                                    
                         else
                             a.button.is-primary(href="/login", class=`${pageTitle=='Login' ? 'is-active' : ''}`) Login                                
         block content
