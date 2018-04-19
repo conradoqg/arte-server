@@ -13,6 +13,7 @@ const Auth = rewire('../../../lib/auth');
 
 const EMBEDDED_MONGO = true;
 const KEEP_DATABASE = false;
+const timeout = ms => new Promise(res => setTimeout(res, ms));
 
 let Mongoose = null;
 let mongoose = null;
@@ -1331,6 +1332,8 @@ describe('HTTPServer', async () => {
             let called = 0;
 
             Webhook.__set__('webhookCaller', () => called++);
+
+            await timeout(3000);
 
             await supertest(context.server.app)
                 .put('/api/buckets/bucket1/artifacts/artifact5')

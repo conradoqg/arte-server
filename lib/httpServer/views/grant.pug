@@ -28,12 +28,16 @@ block content
                                         .field
                                             .control
                                                 label.checkbox
-                                                    input#createUpdateCheckbox(type='checkbox' checked=true) 
-                                                    | Create/Update artifacts
+                                                    input#createCheckbox(type='checkbox' checked=true) 
+                                                    | Create artifacts
+                                            .control
+                                                label.checkbox
+                                                    input#updateCheckbox(type='checkbox' checked=true) 
+                                                    | Update artifact
                                             .control
                                                 label.checkbox
                                                     input#removeCheckbox(type='checkbox' checked=true)
-                                                    | Remove artifacts
+                                                    | Remove artifact
                                     .field.is-grouped.is-grouped-right
                                         .control
                                             button.button.is-primary#generateButton(type='submit') Generate
