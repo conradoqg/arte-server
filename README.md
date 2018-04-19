@@ -51,6 +51,11 @@ Local:
 # Clone the repository
 $ git clone https://github.com/conradoqg/arte-server.git
 
+# Install the dependencies
+$ npm install
+
+# Install MongoDB
+
 # Run the arte-server
 $ cd arte-server
 $ node ./bin/arte-server.js
@@ -60,6 +65,11 @@ Using Docker (you must install docker beforehand):
 ```bash
 # Clone the repository
 $ git clone https://github.com/conradoqg/arte-server.git
+
+# Install the dependencies
+$ npm install
+
+# Install MongoDB
 
 # Build docker image
 $ docker build . -t arte-server:latest
@@ -72,6 +82,9 @@ Usind Docker Compose (you must install docker beforehand):
 ```bash
 # Clone the repository
 $ git clone https://github.com/conradoqg/arte-server.git
+
+# Install the dependencies
+$ npm install
 
 # Docker compose up
 $ docker-compose up

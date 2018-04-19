@@ -346,7 +346,7 @@ describe('HTTPServer', async () => {
         step('update config adding ldap', async () => {
             context.authService.ldapConfig = [{
                 url: 'ldap://ldap.forumsys.com:389',
-                bindDN: 'cn=read-only-superuser,dc=example,dc=com',
+                bindDN: 'cn=read-only-admin,dc=example,dc=com',
                 bindCredentials: 'password',
                 searchBase: 'dc=example,dc=com',
                 searchFilter: '(uid={{username}})'
