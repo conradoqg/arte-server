@@ -3,13 +3,13 @@ const should = require('chai').should();
 const supertest = require('supertest');
 const path = require('path');
 const rewire = require('rewire');
-const Config = require('../../lib/config');
-const HTTPServer = require('../../lib/httpServer');
-const DB = require('../../lib/db');
-const Bucket = require('../../lib/bucket');
-const Artifact = require('../../lib/artifact');
-const Webhook = rewire('../../lib/webhook');
-const Auth = rewire('../../lib/auth');
+const Config = require('../../../lib/config');
+const HTTPServer = require('../../../lib/httpServer');
+const DB = require('../../../lib/db');
+const Bucket = require('../../../lib/bucket');
+const Artifact = require('../../../lib/artifact');
+const Webhook = rewire('../../../lib/webhook');
+const Auth = rewire('../../../lib/auth');
 
 const EMBEDDED_MONGO = true;
 const KEEP_DATABASE = false;
@@ -25,84 +25,9 @@ if (EMBEDDED_MONGO) {
     mockgoose = new Mockgoose(mongoose);
 }
 
-/*
-Test map
-
-get /ping
-    get ping -> OK
-
-get /buckets
-    get buckets -> []
-
-get /throw
-    get throw -> Error 500
-
-post /buckets    
-    post bucket1 -> bucket1
-
-get /buckets/:bucketName
-    get bucket0 -> Error 404
-    get bucket1 -> bucket1
-
-put /buckets/:bucketName/artifacts/:artifactName/:version?        
-    put bucket1/artifact1/1.0 -> bucket1/artifact1/1.0
-    put bucket1/artifact1/1.0 -> bucket1/artifact1/1.0 with a greater lastUpdate
-    put bucket1/artifact1/2.0 -> bucket1/artifact1/2.0
-    put bucket1/artifact3/1.0?os=linux -> bucket1/artifact3/1.0?os=linux&arch=all
-    put bucket1/artifact3/1.0?os=linux&arch=x86 -> bucket1/artifact3/1.0?os=linux&arch=x86
-    put bucket1/artifact3/1.0?os=macos -> bucket1/artifact3/1.0?os=macos&arch=all
-    put bucket1/artifact3/1.0?os=windows&arch=x86 -> bucket1/artifact3/1.0?os=windows&arch=x86
-
-get /buckets/:bucketName/artifacts/:artifactName/:version? (application/zip)
-    get zip bucket1/artifact1 -> bucket1/artifact1/2.0?os=all&arch=all
-    get zip bucket1/artifact1/latest -> bucket1/artifact1/2.0?os=all&arch=all
-    get zip bucket1/artifact1/oldest -> bucket1/artifact1/1.0?os=all&arch=all
-    get zip bucket1/artifact1/1.0 -> bucket1/artifact1/1.0?os=all&arch=all
-    get zip bucket1/artifact1/2.0 -> bucket1/artifact1/2.0?os=all&arch=all
-    get zip bucket1/artifact1/3.0 -> Error 404    
-    get zip bucket1/artifact2 -> Error 404
-    get zip bucket1/artifact2/latest -> Error 404
-    get zip bucket1/artifact2/oldest -> Error 404
-    get zip bucket1/artifact3/1.0?os=linux -> bucket1/artifact3/1.0?os=linux&arch=all
-    get zip bucket1/artifact3/1.0?os=linux&arch=x86 -> bucket1/artifact3/1.0?os=linux&arch=x86
-    get zip bucket1/artifact3/1.0?os=macos -> bucket1/artifact3/1.0?os=macos&arch=all
-    get zip bucket1/artifact3/1.0?os=latest -> bucket1/artifact3/1.0?os=macos&arch=all
-    get zip bucket1/artifact3/1.0?os=windows -> bucket1/artifact3/1.0?os=windows&arch=all -> Error 404
-    get zip bucket1/artifact3/1.0?os=all -> bucket1/artifact3/1.0?os=all&arch=all -> Error 404
-
-get /artifacts/search
-    get bucket1/artifact1 -> [bucket1/artifact1/1.0, bucket1/artifact1/2.0]
-    get bucket1/artifact2 -> Error 404
-    get bucket1/artifact1/latest -> [ bucket1/artifact1/2.0, bucket1/artifact1/1.0 ]
-    get bucket1/artifact1/oldest -> [ bucket1/artifact1/1.0, bucket1/artifact1/2.0 ]
-    get bucket1/artifact1/1.0 -> [ bucket1/artifact1/1.0 ]
-    get bucket1/artifact1/2.0 -> [ bucket1/artifact1/2.0 ]
-    get bucket1/artifact1/3.0 -> []
-    get bucket1/artifact1/1.0?arch=x2 -> Error 400
-    get bucket1/artifact3/1.0 -> [ bucket1/artifact3/1.0?os=linux&arch=all, bucket1/artifact3/1.0?os=linux&arch=x86, bucket1/artifact3/1.0?os=x86&arch=all, bucket1/artifact3/1.0?os=macos&arch=x86 ]
-    get bucket1/artifact3/1.0?os=linux -> [ bucket1/artifact3/1.0?os=linux&arch=all, bucket1/artifact3/1.0?os=linux&arch=x86 ]
-    get bucket1/artifact3/1.0?os=linux&arch=x86 -> [ bucket1/artifact3/1.0?os=linux&arch=x86 ]
-    get bucket1/artifact3/1.0?os=macos -> [ bucket1/artifact3/1.0?os=macos&arch=all ]
-    get bucket1/artifact3/1.0?os=macos&arch=all -> [ bucket1/artifact3/1.0?os=macos&arch=all ]
-    get bucket1/artifact3/1.0?os=latest -> [ bucket1/artifact3/1.0?os=linux&arch=all, bucket1/artifact3/1.0?os=linux&arch=x86, bucket1/artifact3/1.0?os=x86&arch=all, bucket1/artifact3/1.0?os=macos&arch=x86 ]
-    get bucket1/artifact3/1.0?os=windows -> [ bucket1/artifact3/1.0?os=windows&arch=x86 ]
-    get bucket1/artifact3/1.0?os=all -> []
-    get bucket1/artifacts -> [6 items]
-
-delete /buckets/:bucketName/artifacts/:artifactName/:version?
-    delete bucket1/artifact1 -> [bucket1/artifact1/1.0, bucket1/artifact1/2.0]
-
-post /webhook
-    post a webhook -> webhook    
-
-features
-    put bucket1/artifact4/{empty} -> bucket1/artifact4/{now}    
-    put [/buckets/bucket1/artifacts/artifact5, /buckets/bucket1/artifacts/artifact6] -> Call 1 webhook
-*/
-
 describe('HTTPServer', async () => {
 
-    let context = {};
+    let context = null;
 
     const createContext = async () => {
         if (EMBEDDED_MONGO) await mockgoose.prepareStorage();
@@ -162,36 +87,38 @@ describe('HTTPServer', async () => {
     });
 
     after(async () => {
-        if (!KEEP_DATABASE) await deleteContext(context);
-        if (EMBEDDED_MONGO) {
-            await mockgoose.helper.reset();
-            await mongoose.disconnect();
-            mockgoose.mongodHelper.mongoBin.childProcess.kill('SIGTERM');
+        if (context) {
+            if (!KEEP_DATABASE) await deleteContext(context);
+            if (EMBEDDED_MONGO) {
+                await mockgoose.helper.reset();
+                await mongoose.disconnect();
+                mockgoose.mongodHelper.mongoBin.childProcess.kill('SIGTERM');
+            }
         }
     });
 
-    describe('get /ping', async () => {
+    describe('get /api/ping', async () => {
         // get ping -> OK
         step('should ping', async () => {
             return await supertest(context.server.app)
-                .get('/ping')
+                .get('/api/ping')
                 .expect(200);
         });
     });
 
-    describe('get /throw', async () => {
+    describe('get /api/throw', async () => {
         // get throw -> Error 500
         step('should throw', async () => {
             await supertest(context.server.app)
-                .get('/throw')
+                .get('/api/throw')
                 .expect(500);
         });
     });
 
-    describe('post /users', async () => {
+    describe('post /api/users', async () => {
         step('should create user 1', async () => {
             return await supertest(context.server.app)
-                .post('/users')
+                .post('/api/users')
                 .set({ Authorization: context.initialToken })
                 .send(context.userUser1)
                 .expect(200);
@@ -199,7 +126,7 @@ describe('HTTPServer', async () => {
 
         step('should create user 2', async () => {
             return await supertest(context.server.app)
-                .post('/users')
+                .post('/api/users')
                 .set({ Authorization: context.initialToken })
                 .send(context.userUser2)
                 .expect(200);
@@ -207,7 +134,7 @@ describe('HTTPServer', async () => {
 
         step('should create guest 1', async () => {
             return await supertest(context.server.app)
-                .post('/users')
+                .post('/api/users')
                 .set({ Authorization: context.initialToken })
                 .send(context.userGuest1)
                 .expect(200);
@@ -215,7 +142,7 @@ describe('HTTPServer', async () => {
 
         step('should create user superuser 1', async () => {
             return await supertest(context.server.app)
-                .post('/users')
+                .post('/api/users')
                 .set({ Authorization: context.initialToken })
                 .send(context.userSuperuser1)
                 .expect(200);
@@ -223,70 +150,70 @@ describe('HTTPServer', async () => {
 
         step('should not create an invalid user', async () => {
             return await supertest(context.server.app)
-                .post('/users')
+                .post('/api/users')
                 .set({ Authorization: context.initialToken })
                 .send(context.userInvalid)
                 .expect(400);
         });
     });
 
-    describe('post /tokens', async () => {
+    describe('post /api/tokens', async () => {
         step('should get token for user 1', async () => {
             const tokenResponse = await supertest(context.server.app)
-                .post('/tokens')
+                .post('/api/tokens')
                 .send(context.userUser1)
                 .expect(200);
-            context.tokenUserUser1 = tokenResponse.body.token;            
+            context.tokenUserUser1 = tokenResponse.body.token;
         });
 
         step('should get token for user 2', async () => {
             const tokenResponse = await supertest(context.server.app)
-                .post('/tokens')
+                .post('/api/tokens')
                 .send(context.userUser2)
                 .expect(200);
-            context.tokenUserUser2 = tokenResponse.body.token;            
+            context.tokenUserUser2 = tokenResponse.body.token;
         });
 
         step('should get token for an invaid user', async () => {
             await supertest(context.server.app)
-                .post('/tokens')
+                .post('/api/tokens')
                 .send({ username: 'none', password: 'none' })
                 .expect(401);
         });
 
         step('should get token for guest 1', async () => {
             const tokenResponse = await supertest(context.server.app)
-                .post('/tokens')
+                .post('/api/tokens')
                 .send(context.userGuest1)
                 .expect(200);
-            context.tokenUserGuest1 = tokenResponse.body.token;            
+            context.tokenUserGuest1 = tokenResponse.body.token;
         });
 
         step('should get token for user superuser 1', async () => {
             const tokenResponse = await supertest(context.server.app)
-                .post('/tokens')
+                .post('/api/tokens')
                 .set({ Authorization: context.initialToken })
                 .send(context.userSuperuser1)
                 .expect(200);
-            context.tokenUserSuperuser1 = tokenResponse.body.token;            
+            context.tokenUserSuperuser1 = tokenResponse.body.token;
         });
     });
 
-    describe('get /tokens/:token', async () => {
+    describe('get /api/tokens/:token', async () => {
         step('should get token data from user 1 token', async () => {
             const tokenDataResponse = await supertest(context.server.app)
-                .get(`/tokens/${context.tokenUserUser1}`)
+                .get(`/api/tokens/${context.tokenUserUser1}`)
                 .expect(200);
             should.exist(tokenDataResponse.body);
             tokenDataResponse.body.should.be.an('object');
         });
     });
 
-    describe('put /users', async () => {
+    describe('put /api/users', async () => {
         step('should change user 2 password using user 2', async () => {
             const newPassword = 'user2user2';
             await supertest(context.server.app)
-                .put('/users')
+                .put('/api/users')
                 .set({ Authorization: context.tokenUserUser2 })
                 .send({
                     username: context.userUser2.username,
@@ -297,7 +224,7 @@ describe('HTTPServer', async () => {
             context.userUser2.password = newPassword;
 
             const tokenResponse = await supertest(context.server.app)
-                .post('/tokens')
+                .post('/api/tokens')
                 .send(context.userUser2)
                 .expect(200);
             context.tokenUserUser2 = tokenResponse.body.token;
@@ -305,7 +232,7 @@ describe('HTTPServer', async () => {
 
         step('should not change user 2 role to superuser using user 2', async () => {
             await supertest(context.server.app)
-                .put('/users/')
+                .put('/api/users/')
                 .set({ Authorization: context.tokenUserUser2 })
                 .send({
                     username: context.userUser2.username,
@@ -316,7 +243,7 @@ describe('HTTPServer', async () => {
 
         step('should change user 2 role to superuser using superuser', async () => {
             await supertest(context.server.app)
-                .put('/users/')
+                .put('/api/users/')
                 .set({ Authorization: context.tokenUserSuperuser1 })
                 .send({
                     username: context.userUser2.username,
@@ -327,10 +254,10 @@ describe('HTTPServer', async () => {
 
     });
 
-    describe('get /users', async () => {
+    describe('get /api/users', async () => {
         step('should get all users using superuser 1', async () => {
             const users = await supertest(context.server.app)
-                .get('/users')
+                .get('/api/users')
                 .set({ Authorization: context.tokenUserSuperuser1 })
                 .expect(200);
             users.body.should.be.an('array');
@@ -338,7 +265,7 @@ describe('HTTPServer', async () => {
 
         step('should not get all users using user 1', async () => {
             return await supertest(context.server.app)
-                .get('/users')
+                .get('/api/users')
                 .set({ Authorization: context.tokenUserUser1 })
                 .expect(403);
         });
@@ -355,18 +282,18 @@ describe('HTTPServer', async () => {
 
         step('get token for ldap user 1 using ldap user', async () => {
             const tokenResponse = await supertest(context.server.app)
-                .post('/tokens')
+                .post('/api/tokens')
                 .send(context.userLDAPUser1)
                 .expect(200);
             context.tokenUserLDAPUser1 = tokenResponse.body.token;
         });
     });
 
-    describe('get /buckets', async () => {
+    describe('get /api/buckets', async () => {
         // get buckets -> []
         step('should get buckets using user 1', async () => {
             const bucketsResult = await supertest(context.server.app)
-                .get('/buckets')
+                .get('/api/buckets')
                 .set({ Authorization: context.tokenUserUser1 })
                 .expect(200);
             should.exist(bucketsResult.body);
@@ -374,11 +301,11 @@ describe('HTTPServer', async () => {
         });
     });
 
-    describe('post /buckets', async () => {
+    describe('post /api/buckets', async () => {
         // post bucket1 -> bucket1
         step('should create the bucket 1 using user 1', async () => {
             const bucketsResult = await supertest(context.server.app)
-                .post('/buckets')
+                .post('/api/buckets')
                 .set({ Authorization: context.tokenUserUser1 })
                 .send({
                     name: 'bucket1',
@@ -441,7 +368,7 @@ describe('HTTPServer', async () => {
         // post bucket2 -> bucket2
         step('should create the bucket 2 using user 1', async () => {
             const bucketsResult = await supertest(context.server.app)
-                .post('/buckets')
+                .post('/api/buckets')
                 .set({ Authorization: context.tokenUserUser1 })
                 .send({
                     name: 'bucket2',
@@ -504,7 +431,7 @@ describe('HTTPServer', async () => {
         // post bucket3 -> 403
         step('should not create the bucket 3 using guest 1', async () => {
             return await supertest(context.server.app)
-                .post('/buckets')
+                .post('/api/buckets')
                 .set({ Authorization: context.tokenUserGuest1 })
                 .send({
                     name: 'bucket3'
@@ -513,11 +440,11 @@ describe('HTTPServer', async () => {
         });
     });
 
-    describe('get /buckets/:bucketName', async () => {
+    describe('get /api/buckets/:bucketName', async () => {
         // get bucket0 -> Error 404
         step('should not get inexistent bucket using user 1', async () => {
             return await supertest(context.server.app)
-                .get('/buckets/bucket0')
+                .get('/api/buckets/bucket0')
                 .set({ Authorization: context.tokenUserUser1 })
                 .expect(404);
         });
@@ -525,7 +452,7 @@ describe('HTTPServer', async () => {
         // get bucket1 -> bucket1
         step('should get bucket 1 using user 1', async () => {
             const bucketsResult = await supertest(context.server.app)
-                .get('/buckets/bucket1')
+                .get('/api/buckets/bucket1')
                 .set({ Authorization: context.tokenUserUser1 })
                 .expect(200);
             should.exist(bucketsResult.body);
@@ -534,11 +461,11 @@ describe('HTTPServer', async () => {
         });
     });
 
-    describe('put /buckets/:bucketName/artifacts/:artifactName/:version?', async () => {
+    describe('put /api/buckets/:bucketName/artifacts/:artifactName/:version?', async () => {
         // put bucket1/artifact1/1.0 -> bucket1/artifact1/1.0
         step('should create an artifact with version 1.0 using user 1', async () => {
             const result = await supertest(context.server.app)
-                .put('/buckets/bucket1/artifacts/artifact1/1.0')
+                .put('/api/buckets/bucket1/artifacts/artifact1/1.0')
                 .set({ Authorization: context.tokenUserUser1 })
                 .attach('artifact', path.resolve(__dirname, 'file.zip'))
                 .expect(200);
@@ -551,7 +478,7 @@ describe('HTTPServer', async () => {
         // put bucket1/artifact1/1.0 using guest 1 -> 403
         step('should not create an artifact with version 1.0 using guest 1', async () => {
             return await supertest(context.server.app)
-                .put('/buckets/bucket1/artifacts/artifact1/1.0')
+                .put('/api/buckets/bucket1/artifacts/artifact1/1.0')
                 .set({ Authorization: context.tokenUserGuest1 })
                 .attach('artifact', path.resolve(__dirname, 'file.zip'))
                 .expect(403);
@@ -560,7 +487,7 @@ describe('HTTPServer', async () => {
         // put bucket1/artifact1/1.0 -> bucket1/artifact1/1.0 with a greater lastUpdate
         step('should create an artifact with version 1.0 but with a greater lastUpdate using user 1', async () => {
             const result = await supertest(context.server.app)
-                .put('/buckets/bucket1/artifacts/artifact1/1.0')
+                .put('/api/buckets/bucket1/artifacts/artifact1/1.0')
                 .set({ Authorization: context.tokenUserUser1 })
                 .attach('artifact', path.resolve(__dirname, 'file.zip'))
                 .expect(200);
@@ -573,7 +500,7 @@ describe('HTTPServer', async () => {
         // put bucket1/artifact1/2.0 -> bucket1/artifact1/2.0
         step('should create an artifact with version 2.0 using user 1', async () => {
             const result = await supertest(context.server.app)
-                .put('/buckets/bucket1/artifacts/artifact1/2.0')
+                .put('/api/buckets/bucket1/artifacts/artifact1/2.0')
                 .set({ Authorization: context.tokenUserUser1 })
                 .attach('artifact', path.resolve(__dirname, 'file.zip'))
                 .expect(200);
@@ -585,7 +512,7 @@ describe('HTTPServer', async () => {
         // put bucket1/artifact3/1.0?os=linux -> bucket1/artifact3/1.0?os=linux&arch=all
         step('should create an artifact with version 1.0 and metadata os=linux using user 1', async () => {
             const result = await supertest(context.server.app)
-                .put('/buckets/bucket1/artifacts/artifact3/1.0')
+                .put('/api/buckets/bucket1/artifacts/artifact3/1.0')
                 .set({ Authorization: context.tokenUserUser1 })
                 .field({
                     os: 'linux'
@@ -603,7 +530,7 @@ describe('HTTPServer', async () => {
         // put bucket1/artifact3/1.0?os=linux&arch=x86 -> bucket1/artifact3/1.0?os=linux&arch=x86
         step('should create an artifact with version 1.0 and metadata os=linux and arch=x86 using user 1', async () => {
             const result = await supertest(context.server.app)
-                .put('/buckets/bucket1/artifacts/artifact3/1.0')
+                .put('/api/buckets/bucket1/artifacts/artifact3/1.0')
                 .set({ Authorization: context.tokenUserUser1 })
                 .field({
                     os: 'linux',
@@ -622,7 +549,7 @@ describe('HTTPServer', async () => {
         // put bucket1/artifact3/1.0?os=macos -> bucket1/artifact3/1.0?os=macos&arch=all
         step('should create an artifact with version 1.0 and metadata os=macos using user 1', async () => {
             const result = await supertest(context.server.app)
-                .put('/buckets/bucket1/artifacts/artifact3/1.0')
+                .put('/api/buckets/bucket1/artifacts/artifact3/1.0')
                 .set({ Authorization: context.tokenUserUser1 })
                 .field({
                     os: 'macos'
@@ -640,7 +567,7 @@ describe('HTTPServer', async () => {
         // put bucket1/artifact3/1.0?os=windows&arch=x86 -> bucket1/artifact3/1.0?os=windows&arch=x86
         step('should create an artifact with version 1.0 and metadata os=windows and arch=x86 using user 1', async () => {
             const result = await supertest(context.server.app)
-                .put('/buckets/bucket1/artifacts/artifact3/1.0')
+                .put('/api/buckets/bucket1/artifacts/artifact3/1.0')
                 .set({ Authorization: context.tokenUserUser1 })
                 .field({
                     os: 'windows',
@@ -657,11 +584,11 @@ describe('HTTPServer', async () => {
         });
     });
 
-    describe('get /buckets/:bucketName/artifacts/:artifactName/:version? using user 1 (application/zip)', async () => {
+    describe('get /api/buckets/:bucketName/artifacts/:artifactName/:version? using user 1 (application/zip)', async () => {
         // get zip bucket1/artifact1 -> bucket1/artifact1/2.0?os=all&arch=all
         step('should get the artifact 1 without specifying the version', async () => {
             const result = await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact1')
+                .get('/api/buckets/bucket1/artifacts/artifact1')
                 .set({ Authorization: context.tokenUserUser1 })
                 .accept('application/zip')
                 .buffer(true)
@@ -676,7 +603,7 @@ describe('HTTPServer', async () => {
         // get zip bucket1/artifact1/latest -> bucket1/artifact1/2.0?os=all&arch=all
         step('should get the latest artifact 1 using user 1', async () => {
             const result = await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact1/latest')
+                .get('/api/buckets/bucket1/artifacts/artifact1/latest')
                 .set({ Authorization: context.tokenUserUser1 })
                 .accept('application/zip')
                 .buffer(true)
@@ -691,7 +618,7 @@ describe('HTTPServer', async () => {
         // get zip bucket1/artifact1/oldest -> bucket1/artifact1/1.0?os=all&arch=all
         step('should get the oldest artifact 1 using user 1', async () => {
             const result = await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact1/oldest')
+                .get('/api/buckets/bucket1/artifacts/artifact1/oldest')
                 .set({ Authorization: context.tokenUserUser1 })
                 .accept('application/zip')
                 .buffer(true)
@@ -706,7 +633,7 @@ describe('HTTPServer', async () => {
         // get zip bucket1/artifact1/1.0 -> bucket1/artifact1/1.0?os=all&arch=all
         step('should get the artifact 1 with version 1.0 using user 1', async () => {
             const result = await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact1/1.0')
+                .get('/api/buckets/bucket1/artifacts/artifact1/1.0')
                 .set({ Authorization: context.tokenUserUser1 })
                 .accept('application/zip')
                 .buffer(true)
@@ -721,7 +648,7 @@ describe('HTTPServer', async () => {
         // get zip bucket1/artifact1/2.0 -> bucket1/artifact1/2.0?os=all&arch=all
         step('should get the artifact 1 with version 2.0 using user 1', async () => {
             const result = await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact1/2.0')
+                .get('/api/buckets/bucket1/artifacts/artifact1/2.0')
                 .set({ Authorization: context.tokenUserUser1 })
                 .accept('application/zip')
                 .buffer(true)
@@ -736,7 +663,7 @@ describe('HTTPServer', async () => {
         // get zip bucket1/artifact1/3.0 -> Error 404
         step('should not get the artifact 1 with version 3.0 using user 1', async () => {
             return await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact1/3.0')
+                .get('/api/buckets/bucket1/artifacts/artifact1/3.0')
                 .set({ Authorization: context.tokenUserUser1 })
                 .accept('application/zip')
                 .buffer(true)
@@ -747,7 +674,7 @@ describe('HTTPServer', async () => {
         // get zip bucket1/artifact2 -> Error 404        
         step('should not get the artifact 2 without specifying the version using user 1', async () => {
             return await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact2')
+                .get('/api/buckets/bucket1/artifacts/artifact2')
                 .set({ Authorization: context.tokenUserUser1 })
                 .accept('application/zip')
                 .buffer(true)
@@ -758,7 +685,7 @@ describe('HTTPServer', async () => {
         // get zip bucket1/artifact2/latest -> Error 404
         step('should not get the latest artifact 2 using user 1', async () => {
             return await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact2/latest')
+                .get('/api/buckets/bucket1/artifacts/artifact2/latest')
                 .set({ Authorization: context.tokenUserUser1 })
                 .accept('application/zip')
                 .buffer(true)
@@ -769,7 +696,7 @@ describe('HTTPServer', async () => {
         // get zip bucket1/artifact2/oldest -> Error 404
         step('should not get the oldest artifact 2 using user 1', async () => {
             return await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact2/oldest')
+                .get('/api/buckets/bucket1/artifacts/artifact2/oldest')
                 .set({ Authorization: context.tokenUserUser1 })
                 .accept('application/zip')
                 .buffer(true)
@@ -780,7 +707,7 @@ describe('HTTPServer', async () => {
         // get zip bucket1/artifact3/1.0?os=linux -> bucket1/artifact3/1.0?os=linux&arch=all
         step('should get the artifact 3 with version 1.0 and metadata os=linux using user 1', async () => {
             const result = await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact3/1.0?os=linux')
+                .get('/api/buckets/bucket1/artifacts/artifact3/1.0?os=linux')
                 .set({ Authorization: context.tokenUserUser1 })
                 .accept('application/zip')
                 .buffer(true)
@@ -795,7 +722,7 @@ describe('HTTPServer', async () => {
         // get zip bucket1/artifact3/1.0?os=linux&arch=x86 -> bucket1/artifact3/1.0?os=linux&arch=x86
         step('should get the artifact 3 with version 1.0 and metadata os=linux and arch=x86 using user 1', async () => {
             const result = await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact3/1.0?os=linux&arch=x86')
+                .get('/api/buckets/bucket1/artifacts/artifact3/1.0?os=linux&arch=x86')
                 .set({ Authorization: context.tokenUserUser1 })
                 .accept('application/zip')
                 .buffer(true)
@@ -810,7 +737,7 @@ describe('HTTPServer', async () => {
         // get zip bucket1/artifact3/1.0?os=macos -> bucket1/artifact3/1.0?os=macos&arch=all
         step('should get the artifact 3 with version 1.0 and metadata os=macos using user 1', async () => {
             const result = await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact3/1.0?os=macos')
+                .get('/api/buckets/bucket1/artifacts/artifact3/1.0?os=macos')
                 .set({ Authorization: context.tokenUserUser1 })
                 .accept('application/zip')
                 .buffer(true)
@@ -825,7 +752,7 @@ describe('HTTPServer', async () => {
         // get zip bucket1/artifact3/1.0?os=latest -> bucket1/artifact3/1.0?os=macos&arch=all
         step('should get the artifact 3 with version 1.0 and metadata os=latest using user 1', async () => {
             const result = await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact3/1.0?os=latest')
+                .get('/api/buckets/bucket1/artifacts/artifact3/1.0?os=latest')
                 .set({ Authorization: context.tokenUserUser1 })
                 .accept('application/zip')
                 .buffer(true)
@@ -840,7 +767,7 @@ describe('HTTPServer', async () => {
         // get zip bucket1/artifact3/1.0?os=windows -> bucket1/artifact3/1.0?os=windows&arch=all -> Error 404
         step('should get the artifact 3 with version 1.0 and metadata os=windows using user 1', async () => {
             return await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact3/1.0?os=windows')
+                .get('/api/buckets/bucket1/artifacts/artifact3/1.0?os=windows')
                 .set({ Authorization: context.tokenUserUser1 })
                 .accept('application/zip')
                 .buffer(true)
@@ -851,7 +778,7 @@ describe('HTTPServer', async () => {
         // get zip bucket1/artifact3/1.0?os=all -> bucket1/artifact3/1.0?os=all&arch=all -> Error 404
         step('should get the artifact 3 with version 1.0 and metadata os=all using user 1', async () => {
             return await supertest(context.server.app)
-                .get('/buckets/bucket1/artifacts/artifact3/1.0?os=all')
+                .get('/api/buckets/bucket1/artifacts/artifact3/1.0?os=all')
                 .set({ Authorization: context.tokenUserUser1 })
                 .accept('application/zip')
                 .buffer(true)
@@ -860,11 +787,11 @@ describe('HTTPServer', async () => {
         });
     });
 
-    describe('get /artifacts/search', async () => {
+    describe('get /api/artifacts/search', async () => {
         // get bucket1/artifact1 -> [bucket1/artifact1/1.0, bucket1/artifact1/2.0]
         step('should get all artifacts 1 without specifying a version using user 1', async () => {
             const result = await supertest(context.server.app)
-                .get('/artifacts/search?bucket=bucket1&artifact=artifact1')
+                .get('/api/artifacts/search?bucket=bucket1&artifact=artifact1')
                 .set({ Authorization: context.tokenUserUser1 })
                 .accept('application/json')
                 .expect(200);
@@ -897,7 +824,7 @@ describe('HTTPServer', async () => {
         // get bucket1/artifact2 -> []
         step('should not get the artifact 2 using user 1', async () => {
             return await supertest(context.server.app)
-                .get('/artifacts/search?bucket=bucket1&artifact=artifact2')
+                .get('/api/artifacts/search?bucket=bucket1&artifact=artifact2')
                 .set({ Authorization: context.tokenUserUser1 })
                 .accept('application/json')
                 .expect(200);
@@ -906,7 +833,7 @@ describe('HTTPServer', async () => {
         // get bucket1/artifact1/latest -> [ bucket1/artifact1/2.0, bucket1/artifact1/1.0 ]
         step('should get the latest artifacts 1 using user 1', async () => {
             const result = await supertest(context.server.app)
-                .get('/artifacts/search?bucket=bucket1&artifact=artifact1&version=latest')
+                .get('/api/artifacts/search?bucket=bucket1&artifact=artifact1&version=latest')
                 .set({ Authorization: context.tokenUserUser1 })
                 .accept('application/json')
                 .expect(200);
@@ -939,7 +866,7 @@ describe('HTTPServer', async () => {
         // get bucket1/artifact1/oldest -> [ bucket1/artifact1/1.0, bucket1/artifact1/2.0 ]
         step('should get the oldest artifacts 1 using user 1', async () => {
             const result = await supertest(context.server.app)
-                .get('/artifacts/search?bucket=bucket1&artifact=artifact1&version=oldest')
+                .get('/api/artifacts/search?bucket=bucket1&artifact=artifact1&version=oldest')
                 .set({ Authorization: context.tokenUserUser1 })
                 .accept('application/json')
                 .expect(200);
@@ -972,7 +899,7 @@ describe('HTTPServer', async () => {
         // get bucket1/artifact1/1.0 -> [ bucket1/artifact1/1.0 ]
         step('should get the artifacts 1 with version 1.0 using user 1', async () => {
             const result = await supertest(context.server.app)
-                .get('/artifacts/search?bucket=bucket1&artifact=artifact1&version=1.0')
+                .get('/api/artifacts/search?bucket=bucket1&artifact=artifact1&version=1.0')
                 .set({ Authorization: context.tokenUserUser1 })
                 .accept('application/json')
                 .expect(200);
@@ -994,7 +921,7 @@ describe('HTTPServer', async () => {
         // get bucket1/artifact1/2.0 -> [ bucket1/artifact1/2.0 ]
         step('should get the artifacts 1 with version 2.0 using user 1', async () => {
             const result = await supertest(context.server.app)
-                .get('/artifacts/search?bucket=bucket1&artifact=artifact1&version=2.0')
+                .get('/api/artifacts/search?bucket=bucket1&artifact=artifact1&version=2.0')
                 .set({ Authorization: context.tokenUserUser1 })
                 .accept('application/json')
                 .expect(200);
@@ -1016,7 +943,7 @@ describe('HTTPServer', async () => {
         // get bucket1/artifact1/3.0 -> []
         step('should not get artifacts 1 with version 3.0 using user 1', async () => {
             const result = await supertest(context.server.app)
-                .get('/artifacts/search?bucket=bucket1&artifact=artifact1&version=3.0')
+                .get('/api/artifacts/search?bucket=bucket1&artifact=artifact1&version=3.0')
                 .set({ Authorization: context.tokenUserUser1 })
                 .accept('application/json')
                 .expect(200);
@@ -1027,7 +954,7 @@ describe('HTTPServer', async () => {
         // get bucket1/artifact1/1.0?arch=x2 -> Error 400
         step('should not get artifact 1 using invalid metadata using user 1', async () => {
             const result = await supertest(context.server.app)
-                .get('/artifacts/search?bucket=bucket1&artifact=artifact1&version=1.0&arch=x2')
+                .get('/api/artifacts/search?bucket=bucket1&artifact=artifact1&version=1.0&arch=x2')
                 .set({ Authorization: context.tokenUserUser1 })
                 .accept('application/json')
                 .expect(200);
@@ -1038,7 +965,7 @@ describe('HTTPServer', async () => {
         // get bucket1/artifact3/1.0 -> [ bucket1/artifact3/1.0?os=linux&arch=all, bucket1/artifact3/1.0?os=linux&arch=x86, bucket1/artifact3/1.0?os=x86&arch=all, bucket1/artifact3/1.0?os=macos&arch=x86 ]
         step('should get the artifacts 3 with version 1.0 using user 1', async () => {
             const result = await supertest(context.server.app)
-                .get('/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0')
+                .get('/api/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0')
                 .set({ Authorization: context.tokenUserUser1 })
                 .accept('application/json')
                 .expect(200);
@@ -1093,7 +1020,7 @@ describe('HTTPServer', async () => {
         // get bucket1/artifact3/1.0?os=linux -> [ bucket1/artifact3/1.0?os=linux&arch=all, bucket1/artifact3/1.0?os=linux&arch=x86 ]
         step('should get the artifacts 3 with version 1.0 and metadata os=linux using user 1', async () => {
             const result = await supertest(context.server.app)
-                .get('/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0&os=linux')
+                .get('/api/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0&os=linux')
                 .set({ Authorization: context.tokenUserUser1 })
                 .accept('application/json')
                 .expect(200);
@@ -1126,7 +1053,7 @@ describe('HTTPServer', async () => {
         // get bucket1/artifact3/1.0?os=linux&arch=x86 -> [ bucket1/artifact3/1.0?os=linux&arch=x86 ]
         step('should get the artifacts 3 with version 1.0 and metadata os=linux and arch=x86 using user 1', async () => {
             const result = await supertest(context.server.app)
-                .get('/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0&os=linux&arch=x86')
+                .get('/api/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0&os=linux&arch=x86')
                 .set({ Authorization: context.tokenUserUser1 })
                 .accept('application/json')
                 .expect(200);
@@ -1148,7 +1075,7 @@ describe('HTTPServer', async () => {
         // get bucket1/artifact3/1.0?os=macos -> [ bucket1/artifact3/1.0?os=macos&arch=all ]
         step('should get the artifacts 3 with version 1.0 and metadata os=macos using user 1', async () => {
             const result = await supertest(context.server.app)
-                .get('/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0&os=macos')
+                .get('/api/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0&os=macos')
                 .set({ Authorization: context.tokenUserUser1 })
                 .accept('application/json')
                 .expect(200);
@@ -1170,7 +1097,7 @@ describe('HTTPServer', async () => {
         // get bucket1/artifact3/1.0?os=macos&arch=all -> [ bucket1/artifact3/1.0?os=macos&arch=all ]
         step('should get the artifacts 3 with version 1.0 and metadata os=macos and arch=all using user 1', async () => {
             const result = await supertest(context.server.app)
-                .get('/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0&os=macos&arch=all')
+                .get('/api/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0&os=macos&arch=all')
                 .set({ Authorization: context.tokenUserUser1 })
                 .accept('application/json')
                 .expect(200);
@@ -1192,7 +1119,7 @@ describe('HTTPServer', async () => {
         // get bucket1/artifact3/1.0?os=latest -> [ bucket1/artifact3/1.0?os=linux&arch=all, bucket1/artifact3/1.0?os=linux&arch=x86, bucket1/artifact3/1.0?os=x86&arch=all, bucket1/artifact3/1.0?os=macos&arch=x86 ]
         step('should get the artifacts 3 with version 1.0 and metadata os=latest using user 1', async () => {
             const result = await supertest(context.server.app)
-                .get('/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0&os=latest')
+                .get('/api/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0&os=latest')
                 .set({ Authorization: context.tokenUserUser1 })
                 .accept('application/json')
                 .expect(200);
@@ -1248,7 +1175,7 @@ describe('HTTPServer', async () => {
         // get bucket1/artifact3/1.0?os=windows -> [ bucket1/artifact3/1.0?os=windows&arch=x86 ]
         step('should get the artifacts 3 with version 1.0 and metadata os=windows and arch=x86 using user 1', async () => {
             const result = await supertest(context.server.app)
-                .get('/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0&os=windows')
+                .get('/api/artifacts/search?bucket=bucket1&artifact=artifact3&version=1.0&os=windows')
                 .set({ Authorization: context.tokenUserUser1 })
                 .accept('application/json')
                 .expect(200);
@@ -1270,7 +1197,7 @@ describe('HTTPServer', async () => {
         // get bucket1/artifact3/1.0?os=all -> []
         step('should not get the artifacts 3 with os=all using user 1', async () => {
             const result = await supertest(context.server.app)
-                .get('/artifacts/search?bucket=bucket1&artifact=artifact1&version=3.0')
+                .get('/api/artifacts/search?bucket=bucket1&artifact=artifact1&version=3.0')
                 .set({ Authorization: context.tokenUserUser1 })
                 .accept('application/json')
                 .expect(200);
@@ -1281,7 +1208,7 @@ describe('HTTPServer', async () => {
         // get bucket1/artifacts -> [6]
         step('should get all artifacts from bucket1 using user 1', async () => {
             const result = await supertest(context.server.app)
-                .get('/artifacts/search?bucket=bucket1')
+                .get('/api/artifacts/search?bucket=bucket1')
                 .set({ Authorization: context.tokenUserUser1 })
                 .accept('application/json')
                 .expect(200);
@@ -1290,11 +1217,11 @@ describe('HTTPServer', async () => {
         });
     });
 
-    describe('delete /buckets/:bucketName/artifacts/:artifactName/:version? using user 1', async () => {
+    describe('delete /api/buckets/:bucketName/artifacts/:artifactName/:version? using user 1', async () => {
         // delete bucket1/artifact1/1.0 -> bucket1/artifact1/1.0
         step('should delete artifacts 1 version 1.0 using user 1', async () => {
             const deleteResult = await supertest(context.server.app)
-                .delete('/buckets/bucket1/artifacts/artifact1/1.0')
+                .delete('/api/buckets/bucket1/artifacts/artifact1/1.0')
                 .set({ Authorization: context.tokenUserUser1 })
                 .expect(200);
             should.exist(deleteResult.body);
@@ -1312,7 +1239,7 @@ describe('HTTPServer', async () => {
                 });
 
             const getResult = await supertest(context.server.app)
-                .get('/artifacts/search?bucket=bucket1&artifact=artifact1')
+                .get('/api/artifacts/search?bucket=bucket1&artifact=artifact1')
                 .accept('application/json')
                 .expect(200);
             should.exist(getResult.body);
@@ -1321,10 +1248,10 @@ describe('HTTPServer', async () => {
     });
 
     // TODO: Set the event which the webhook will be called
-    describe('post /webhook', async () => {
+    describe('post /api/webhook', async () => {
         step('should post a webhook', async () => {
             const webhookCreationResult = await supertest(context.server.app)
-                .post('/webhooks')
+                .post('/api/webhooks')
                 .send({
                     bucket: 'bucket1',
                     artifact: 'artifact5',
@@ -1337,10 +1264,10 @@ describe('HTTPServer', async () => {
         });
     });
 
-    describe('post /tokens/grants', async () => {
+    describe('post /api/tokens/grants', async () => {
         step('should create a grant token for user granted 1 using user 1', async () => {
             const tokenResponse = await supertest(context.server.app)
-                .post('/tokens/grants')
+                .post('/api/tokens/grants')
                 .set({ Authorization: context.tokenUserUser1 })
                 .send({
                     username: 'Granted1',
@@ -1358,7 +1285,7 @@ describe('HTTPServer', async () => {
         // put bucket1/artifact1/1.0 using granted 1 on bucket 1 -> bucket1/artifact1/1.0
         step('should create an artifact with version 1.0 using granted 1 on bucket 1', async () => {
             const result = await supertest(context.server.app)
-                .put('/buckets/bucket1/artifacts/artifact6/1.0')
+                .put('/api/buckets/bucket1/artifacts/artifact6/1.0')
                 .set({ Authorization: context.tokenUserGranted1 })
                 .attach('artifact', path.resolve(__dirname, 'file.zip'))
                 .expect(200);
@@ -1371,7 +1298,7 @@ describe('HTTPServer', async () => {
         // put bucket1/artifact1/1.0 using granted 1 on bucket 2 -> 403
         step('should not create an artifact with version 1.0 using granted 1 on bucket 2', async () => {
             return await supertest(context.server.app)
-                .put('/buckets/bucket2/artifacts/artifact1/1.0')
+                .put('/api/buckets/bucket2/artifacts/artifact1/1.0')
                 .set({ Authorization: context.tokenUserGranted1 })
                 .attach('artifact', path.resolve(__dirname, 'file.zip'))
                 .expect(403);
@@ -1380,7 +1307,7 @@ describe('HTTPServer', async () => {
         // put bucket1/artifact1/1.0 using granted 1 on bucket 1 -> bucket1/artifact1/1.0
         step('should remove artifact6 using granted 1 on bucket 1', async () => {
             return await supertest(context.server.app)
-                .delete('/buckets/bucket1/artifacts/artifact6/1.0')
+                .delete('/api/buckets/bucket1/artifacts/artifact6/1.0')
                 .set({ Authorization: context.tokenUserGranted1 })
                 .expect(200);
         });
@@ -1390,7 +1317,7 @@ describe('HTTPServer', async () => {
         // put bucket1/artifact4/{empty} -> bucket1/artifact4/{now}
         step('should create the artifact 4 with the default version (version=now) using user 1', async () => {
             const result = await supertest(context.server.app)
-                .put('/buckets/bucket1/artifacts/artifact4')
+                .put('/api/buckets/bucket1/artifacts/artifact4')
                 .set({ Authorization: context.initialToken })
                 .attach('artifact', path.resolve(__dirname, 'file.zip'))
                 .expect(200);
@@ -1406,13 +1333,13 @@ describe('HTTPServer', async () => {
             Webhook.__set__('webhookCaller', () => called++);
 
             await supertest(context.server.app)
-                .put('/buckets/bucket1/artifacts/artifact5')
+                .put('/api/buckets/bucket1/artifacts/artifact5')
                 .set({ Authorization: context.initialToken })
                 .attach('artifact', path.resolve(__dirname, 'file.zip'))
                 .expect(200);
 
             await supertest(context.server.app)
-                .put('/buckets/bucket1/artifacts/artifact6')
+                .put('/api/buckets/bucket1/artifacts/artifact6')
                 .set({ Authorization: context.initialToken })
                 .attach('artifact', path.resolve(__dirname, 'file.zip'))
                 .expect(200);

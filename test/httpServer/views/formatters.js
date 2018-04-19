@@ -13,7 +13,7 @@ describe('Formatters', async () => {
             }
         });
 
-        builtURL.should.be.equal('/buckets/bucket1/artifacts/artifact1/1.0?os=linux&arch=x86');
+        builtURL.should.be.equal('/api/buckets/bucket1/artifacts/artifact1/1.0?os=linux&arch=x86');
     });
 
     it('should build CLI command for linux/macos', async () => {
