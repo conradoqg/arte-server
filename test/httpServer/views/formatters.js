@@ -23,7 +23,7 @@ describe('Formatters', async () => {
             },
             protocol: 'http'
         };
-        const builtCLICommand = formatters.buildCLICommand(req, {
+        const builtCLICommand = formatters.buildCLICommand({
             bucket: 'bucket1',
             name: 'artifact1',
             version: '1.0',
@@ -31,9 +31,9 @@ describe('Formatters', async () => {
                 os: 'linux',
                 arch: 'x86'
             }
-        }, 'linux');
+        }, 'linux', req);
 
-        builtCLICommand.should.be.equal('./arte get -b bucket1 -n artifact1 -v 1.0 --metadata.os linux --metadata.arch x86   --url http://localhost');
+        builtCLICommand.should.be.equal('./arte get -b bucket1 -n artifact1 -v 1.0 --metadata.os linux --metadata.arch x86 --url http://localhost');
     });
 
     it('should build CLI command for windows', async () => {
@@ -43,7 +43,7 @@ describe('Formatters', async () => {
             },
             protocol: 'http'
         };
-        const builtCLICommand = formatters.buildCLICommand(req, {
+        const builtCLICommand = formatters.buildCLICommand({
             bucket: 'bucket1',
             name: 'artifact1',
             version: '1.0',
@@ -51,8 +51,8 @@ describe('Formatters', async () => {
                 os: 'linux',
                 arch: 'x86'
             }
-        }, 'windows');
+        }, 'windows', req);
 
-        builtCLICommand.should.be.equal('arte.exe get -b bucket1 -n artifact1 -v 1.0 --metadata.os linux --metadata.arch x86   --url http://localhost');
+        builtCLICommand.should.be.equal('arte.exe get -b bucket1 -n artifact1 -v 1.0 --metadata.os linux --metadata.arch x86 --url http://localhost');
     });
 });

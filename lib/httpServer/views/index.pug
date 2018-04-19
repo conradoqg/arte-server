@@ -54,13 +54,13 @@ block content
                                         a.button(href=`${formatters.buildURL(artifact)}`, data-balloon="Download", data-balloon-pos="up") 
                                             span.icon
                                                 i.fas.fa-download
-                                        a.button.copy(data-clipboard-text=`${formatters.buildCLICommand(req, artifact, 'linux')}`, data-balloon="Click to copy to the clipboard the CLI command for Linux", data-balloon-pos="up", title='CLI link for Linux') 
+                                        a.button.copy(data-clipboard-text=`${formatters.buildCLICommand(artifact, 'linux', req)}`, data-balloon="Click to copy to the clipboard the CLI command for Linux", data-balloon-pos="up", title='CLI link for Linux') 
                                             span.icon
                                                 i.fab.fa-linux                                              
-                                        a.button.copy(data-clipboard-text=`${formatters.buildCLICommand(req, artifact, 'macos')}`, data-balloon="Click to copy to the clipboard the CLI command for MacOS", data-balloon-pos="up", title='CLI link for MacOS') 
+                                        a.button.copy(data-clipboard-text=`${formatters.buildCLICommand(artifact, 'macos', req)}`, data-balloon="Click to copy to the clipboard the CLI command for MacOS", data-balloon-pos="up", title='CLI link for MacOS') 
                                             span.icon
                                                 i.fab.fa-apple                                            
-                                        a.button.copy(data-clipboard-text=`${formatters.buildCLICommand(req, artifact, 'windows')}`, data-balloon="Click to copy to the clipboard the CLI command for Windows", data-balloon-pos="up", title='CLI link for Windows') 
+                                        a.button.copy(data-clipboard-text=`${formatters.buildCLICommand(artifact, 'windows', req)}`, data-balloon="Click to copy to the clipboard the CLI command for Windows", data-balloon-pos="up", title='CLI link for Windows') 
                                             span.icon
                                                 i.fab.fa-windows
             else
