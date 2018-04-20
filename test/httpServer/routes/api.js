@@ -11,7 +11,7 @@ const Artifact = require('../../../lib/artifact');
 const Webhook = rewire('../../../lib/webhook');
 const Auth = rewire('../../../lib/auth');
 
-const EMBEDDED_MONGO = true;
+const EMBEDDED_MONGO = false;
 const KEEP_DATABASE = false;
 const timeout = ms => new Promise(res => setTimeout(res, ms));
 
@@ -473,7 +473,7 @@ describe('HTTPServer', async () => {
             should.exist(result.body);
             result.body.should.be.an('object');
             result.body.version.should.be.an('string').equal('1.0');
-            context.lastUpdate = result.body.lastUpdate;
+            context.updatedAt = result.body.updatedAt;
         });
 
         // put bucket1/artifact1/1.0 using guest 1 -> 403
@@ -485,8 +485,8 @@ describe('HTTPServer', async () => {
                 .expect(403);
         });
 
-        // put bucket1/artifact1/1.0 -> bucket1/artifact1/1.0 with a greater lastUpdate
-        step('should create an artifact with version 1.0 but with a greater lastUpdate using user 1', async () => {
+        // put bucket1/artifact1/1.0 -> bucket1/artifact1/1.0 with a greater updatedAt
+        step('should create an artifact with version 1.0 but with a greater updatedAt using user 1', async () => {
             const result = await supertest(context.server.app)
                 .put('/api/buckets/bucket1/artifacts/artifact1/1.0')
                 .set({ Authorization: context.tokenUserUser1 })
@@ -495,7 +495,7 @@ describe('HTTPServer', async () => {
             should.exist(result.body);
             result.body.should.be.an('object');
             result.body.version.should.be.an('string').equal('1.0');
-            Date.parse(result.body.lastUpdate).should.be.greaterThan(Date.parse(context.lastUpdate));
+            Date.parse(result.body.updatedAt).should.be.greaterThan(Date.parse(context.updatedAt));
         });
 
         // put bucket1/artifact1/2.0 -> bucket1/artifact1/2.0
@@ -806,7 +806,8 @@ describe('HTTPServer', async () => {
                     normalizedVersion: '0000000002.0000000000',
                     path: path.normalize('bucket1/artifact1-2.0-undefined-all-all-all-all-none.zip'),
                     fileSize: 561,
-                    lastUpdate: result.body[0].lastUpdate,
+                    updatedAt: result.body[0].updatedAt,
+                    createdAt: result.body[0].createdAt,
                     metadata: { arch: 'all', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
                 });
             result.body[1].should.be.deep.equal(
@@ -817,7 +818,8 @@ describe('HTTPServer', async () => {
                     normalizedVersion: '0000000001.0000000000',
                     path: path.normalize('bucket1/artifact1-1.0-undefined-all-all-all-all-none.zip'),
                     fileSize: 561,
-                    lastUpdate: result.body[1].lastUpdate,
+                    updatedAt: result.body[1].updatedAt,
+                    createdAt: result.body[1].createdAt,
                     metadata: { arch: 'all', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
                 });
         });
@@ -848,7 +850,8 @@ describe('HTTPServer', async () => {
                     normalizedVersion: '0000000002.0000000000',
                     path: path.normalize('bucket1/artifact1-2.0-undefined-all-all-all-all-none.zip'),
                     fileSize: 561,
-                    lastUpdate: result.body[0].lastUpdate,
+                    updatedAt: result.body[0].updatedAt,
+                    createdAt: result.body[0].createdAt,
                     metadata: { arch: 'all', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
                 });
             result.body[1].should.be.deep.equal(
@@ -859,7 +862,8 @@ describe('HTTPServer', async () => {
                     normalizedVersion: '0000000001.0000000000',
                     path: path.normalize('bucket1/artifact1-1.0-undefined-all-all-all-all-none.zip'),
                     fileSize: 561,
-                    lastUpdate: result.body[1].lastUpdate,
+                    updatedAt: result.body[1].updatedAt,
+                    createdAt: result.body[1].createdAt,
                     metadata: { arch: 'all', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
                 });
         });
@@ -881,7 +885,8 @@ describe('HTTPServer', async () => {
                     normalizedVersion: '0000000001.0000000000',
                     path: path.normalize('bucket1/artifact1-1.0-undefined-all-all-all-all-none.zip'),
                     fileSize: 561,
-                    lastUpdate: result.body[0].lastUpdate,
+                    updatedAt: result.body[0].updatedAt,
+                    createdAt: result.body[0].createdAt,
                     metadata: { arch: 'all', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
                 });
             result.body[1].should.be.deep.equal(
@@ -892,7 +897,8 @@ describe('HTTPServer', async () => {
                     normalizedVersion: '0000000002.0000000000',
                     path: path.normalize('bucket1/artifact1-2.0-undefined-all-all-all-all-none.zip'),
                     fileSize: 561,
-                    lastUpdate: result.body[1].lastUpdate,
+                    updatedAt: result.body[1].updatedAt,
+                    createdAt: result.body[1].createdAt,
                     metadata: { arch: 'all', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
                 });
         });
@@ -914,7 +920,8 @@ describe('HTTPServer', async () => {
                     normalizedVersion: '0000000001.0000000000',
                     path: path.normalize('bucket1/artifact1-1.0-undefined-all-all-all-all-none.zip'),
                     fileSize: 561,
-                    lastUpdate: result.body[0].lastUpdate,
+                    updatedAt: result.body[0].updatedAt,
+                    createdAt: result.body[0].createdAt,
                     metadata: { arch: 'all', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
                 });
         });
@@ -936,7 +943,8 @@ describe('HTTPServer', async () => {
                     normalizedVersion: '0000000002.0000000000',
                     path: path.normalize('bucket1/artifact1-2.0-undefined-all-all-all-all-none.zip'),
                     fileSize: 561,
-                    lastUpdate: result.body[0].lastUpdate,
+                    updatedAt: result.body[0].updatedAt,
+                    createdAt: result.body[0].createdAt,
                     metadata: { arch: 'all', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
                 });
         });
@@ -980,7 +988,8 @@ describe('HTTPServer', async () => {
                     normalizedVersion: '0000000001.0000000000',
                     path: path.normalize('bucket1/artifact3-1.0-undefined-linux-all-all-all-none.zip'),
                     fileSize: 561,
-                    lastUpdate: result.body[0].lastUpdate,
+                    updatedAt: result.body[0].updatedAt,
+                    createdAt: result.body[0].createdAt,
                     metadata: { arch: 'all', os: 'linux', language: 'all', country: 'all', customVersion: 'none' }
                 });
             result.body[1].should.be.deep.equal(
@@ -991,7 +1000,8 @@ describe('HTTPServer', async () => {
                     normalizedVersion: '0000000001.0000000000',
                     path: path.normalize('bucket1/artifact3-1.0-undefined-linux-x86-all-all-none.zip'),
                     fileSize: 561,
-                    lastUpdate: result.body[1].lastUpdate,
+                    updatedAt: result.body[1].updatedAt,
+                    createdAt: result.body[1].createdAt,
                     metadata: { arch: 'x86', os: 'linux', language: 'all', country: 'all', customVersion: 'none' }
                 });
             result.body[2].should.be.deep.equal(
@@ -1002,7 +1012,8 @@ describe('HTTPServer', async () => {
                     normalizedVersion: '0000000001.0000000000',
                     path: path.normalize('bucket1/artifact3-1.0-undefined-macos-all-all-all-none.zip'),
                     fileSize: 561,
-                    lastUpdate: result.body[2].lastUpdate,
+                    updatedAt: result.body[2].updatedAt,
+                    createdAt: result.body[2].createdAt,
                     metadata: { arch: 'all', os: 'macos', language: 'all', country: 'all', customVersion: 'none' }
                 });
             result.body[3].should.be.deep.equal(
@@ -1013,7 +1024,8 @@ describe('HTTPServer', async () => {
                     normalizedVersion: '0000000001.0000000000',
                     path: path.normalize('bucket1/artifact3-1.0-undefined-windows-x86-all-all-none.zip'),
                     fileSize: 561,
-                    lastUpdate: result.body[3].lastUpdate,
+                    updatedAt: result.body[3].updatedAt,
+                    createdAt: result.body[3].createdAt,
                     metadata: { arch: 'x86', os: 'windows', language: 'all', country: 'all', customVersion: 'none' }
                 });
         });
@@ -1035,7 +1047,8 @@ describe('HTTPServer', async () => {
                     normalizedVersion: '0000000001.0000000000',
                     path: path.normalize('bucket1/artifact3-1.0-undefined-linux-all-all-all-none.zip'),
                     fileSize: 561,
-                    lastUpdate: result.body[0].lastUpdate,
+                    updatedAt: result.body[0].updatedAt,
+                    createdAt: result.body[0].createdAt,
                     metadata: { arch: 'all', os: 'linux', language: 'all', country: 'all', customVersion: 'none' }
                 });
             result.body[1].should.be.deep.equal(
@@ -1046,7 +1059,8 @@ describe('HTTPServer', async () => {
                     normalizedVersion: '0000000001.0000000000',
                     path: path.normalize('bucket1/artifact3-1.0-undefined-linux-x86-all-all-none.zip'),
                     fileSize: 561,
-                    lastUpdate: result.body[1].lastUpdate,
+                    updatedAt: result.body[1].updatedAt,
+                    createdAt: result.body[1].createdAt,
                     metadata: { arch: 'x86', os: 'linux', language: 'all', country: 'all', customVersion: 'none' }
                 });
         });
@@ -1068,7 +1082,8 @@ describe('HTTPServer', async () => {
                     normalizedVersion: '0000000001.0000000000',
                     path: path.normalize('bucket1/artifact3-1.0-undefined-linux-x86-all-all-none.zip'),
                     fileSize: 561,
-                    lastUpdate: result.body[0].lastUpdate,
+                    updatedAt: result.body[0].updatedAt,
+                    createdAt: result.body[0].createdAt,
                     metadata: { arch: 'x86', os: 'linux', language: 'all', country: 'all', customVersion: 'none' }
                 });
         });
@@ -1090,7 +1105,8 @@ describe('HTTPServer', async () => {
                     normalizedVersion: '0000000001.0000000000',
                     path: path.normalize('bucket1/artifact3-1.0-undefined-macos-all-all-all-none.zip'),
                     fileSize: 561,
-                    lastUpdate: result.body[0].lastUpdate,
+                    updatedAt: result.body[0].updatedAt,
+                    createdAt: result.body[0].createdAt,
                     metadata: { arch: 'all', os: 'macos', language: 'all', country: 'all', customVersion: 'none' }
                 });
         });
@@ -1112,7 +1128,8 @@ describe('HTTPServer', async () => {
                     normalizedVersion: '0000000001.0000000000',
                     path: path.normalize('bucket1/artifact3-1.0-undefined-macos-all-all-all-none.zip'),
                     fileSize: 561,
-                    lastUpdate: result.body[0].lastUpdate,
+                    updatedAt: result.body[0].updatedAt,
+                    createdAt: result.body[0].createdAt,
                     metadata: { arch: 'all', os: 'macos', language: 'all', country: 'all', customVersion: 'none' }
                 });
         });
@@ -1134,7 +1151,8 @@ describe('HTTPServer', async () => {
                     normalizedVersion: '0000000001.0000000000',
                     path: path.normalize('bucket1/artifact3-1.0-undefined-windows-x86-all-all-none.zip'),
                     fileSize: 561,
-                    lastUpdate: result.body[0].lastUpdate,
+                    updatedAt: result.body[0].updatedAt,
+                    createdAt: result.body[0].createdAt,
                     metadata: { arch: 'x86', os: 'windows', language: 'all', country: 'all', customVersion: 'none' }
                 });
             result.body[1].should.be.deep.equal(
@@ -1145,7 +1163,8 @@ describe('HTTPServer', async () => {
                     normalizedVersion: '0000000001.0000000000',
                     path: path.normalize('bucket1/artifact3-1.0-undefined-macos-all-all-all-none.zip'),
                     fileSize: 561,
-                    lastUpdate: result.body[1].lastUpdate,
+                    updatedAt: result.body[1].updatedAt,
+                    createdAt: result.body[1].createdAt,
                     metadata: { arch: 'all', os: 'macos', language: 'all', country: 'all', customVersion: 'none' }
                 });
             result.body[2].should.be.deep.equal(
@@ -1156,7 +1175,8 @@ describe('HTTPServer', async () => {
                     normalizedVersion: '0000000001.0000000000',
                     path: path.normalize('bucket1/artifact3-1.0-undefined-linux-all-all-all-none.zip'),
                     fileSize: 561,
-                    lastUpdate: result.body[2].lastUpdate,
+                    updatedAt: result.body[2].updatedAt,
+                    createdAt: result.body[2].createdAt,
                     metadata: { arch: 'all', os: 'linux', language: 'all', country: 'all', customVersion: 'none' }
                 });
             result.body[3].should.be.deep.equal(
@@ -1167,7 +1187,8 @@ describe('HTTPServer', async () => {
                     normalizedVersion: '0000000001.0000000000',
                     path: path.normalize('bucket1/artifact3-1.0-undefined-linux-x86-all-all-none.zip'),
                     fileSize: 561,
-                    lastUpdate: result.body[3].lastUpdate,
+                    updatedAt: result.body[3].updatedAt,
+                    createdAt: result.body[3].createdAt,
                     metadata: { arch: 'x86', os: 'linux', language: 'all', country: 'all', customVersion: 'none' }
                 });
 
@@ -1190,7 +1211,8 @@ describe('HTTPServer', async () => {
                     normalizedVersion: '0000000001.0000000000',
                     path: path.normalize('bucket1/artifact3-1.0-undefined-windows-x86-all-all-none.zip'),
                     fileSize: 561,
-                    lastUpdate: result.body[0].lastUpdate,
+                    updatedAt: result.body[0].updatedAt,
+                    createdAt: result.body[0].createdAt,
                     metadata: { arch: 'x86', os: 'windows', language: 'all', country: 'all', customVersion: 'none' }
                 });
         });
@@ -1234,8 +1256,9 @@ describe('HTTPServer', async () => {
                     version: '1.0',
                     normalizedVersion: '0000000001.0000000000',
                     path: path.normalize('bucket1/artifact1-1.0-undefined-all-all-all-all-none.zip'),
-                    fileSize: 561,
-                    lastUpdate: deleteResult.body.lastUpdate,
+                    fileSize: 561,                    
+                    updatedAt: deleteResult.body.updatedAt,
+                    createdAt: deleteResult.body.createdAt,
                     metadata: { arch: 'all', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
                 });
 
@@ -1292,7 +1315,7 @@ describe('HTTPServer', async () => {
             should.exist(result.body);
             result.body.should.be.an('object');
             result.body.version.should.be.an('string').equal('1.0');
-            context.lastUpdate = result.body.lastUpdate;
+            context.updatedAt = result.body.updatedAt;
         });
 
         // put bucket1/artifact1/1.0 using granted 1 on bucket 2 -> 403
