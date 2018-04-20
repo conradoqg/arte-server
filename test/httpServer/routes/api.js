@@ -11,7 +11,7 @@ const Artifact = require('../../../lib/artifact');
 const Webhook = rewire('../../../lib/webhook');
 const Auth = rewire('../../../lib/auth');
 
-const EMBEDDED_MONGO = false;
+const EMBEDDED_MONGO = true;
 const KEEP_DATABASE = false;
 const timeout = ms => new Promise(res => setTimeout(res, ms));
 
