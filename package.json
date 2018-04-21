@@ -15,7 +15,8 @@
     "start": "cross-env NODE_ENV=development node bin//arte-server.js",
     "coveralls": "nyc npm test && nyc report --reporter=text-lcov | coveralls",
     "coverage": "cross-env NODE_ENV=development LOG_LEVEL=0 nyc --reporter=lcov --reporter=text --clean node node_modules/mocha/bin/_mocha -u bdd --recursive --timeout 60000 --colors test/",
-    "test": "cross-env NODE_ENV=development LOG_LEVEL=0 mocha -u bdd --recursive --timeout 60000 --colors test/"
+    "test": "cross-env NODE_ENV=development LOG_LEVEL=0 eslint bin lib test && mocha -u bdd --recursive --timeout 60000 --colors test/",
+    "lint": "eslint bin lib test"
   },
   "license": "MIT",
   "engines": {
@@ -53,6 +54,7 @@
   "devDependencies": {
     "chai": "^4.1.2",
     "coveralls": "^3.0.0",
+    "eslint": "^4.19.1",
     "js-yaml": "^3.11.0",
     "mocha": "^5.1.1",
     "mocha-steps": "^1.1.0",
