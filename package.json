@@ -1,6 +1,6 @@
 {
   "name": "arte-server",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "An artifact service to store binary data",
   "homepage": "https://github.com/conradoqg/arte-server",
   "repository": {
