@@ -13,9 +13,9 @@
   },
   "scripts": {
     "start": "cross-env NODE_ENV=development node bin//arte-server.js",
-    "coveralls": "nyc npm test && nyc report --reporter=text-lcov | coveralls",
-    "coverage": "cross-env NODE_ENV=development LOG_LEVEL=0 nyc --reporter=lcov --reporter=text --clean node node_modules/mocha/bin/_mocha -u bdd --recursive --timeout 60000 --colors test/",
-    "test": "cross-env NODE_ENV=development LOG_LEVEL=0 eslint bin lib test && mocha -u bdd --recursive --timeout 60000 --colors test/",
+    "coveralls": "cross-env NODE_ENV=test nyc npm test && nyc report --reporter=text-lcov | coveralls",
+    "coverage": "cross-env NODE_ENV=test LOG_LEVEL=0 nyc --reporter=lcov --reporter=text --clean node node_modules/mocha/bin/_mocha -u bdd --recursive --timeout 60000 --colors test/",
+    "test": "eslint bin lib test && cross-env NODE_ENV=test LOG_LEVEL=0 mocha -u bdd --recursive --timeout 60000 --colors test/",
     "lint": "eslint --fix bin lib test"
   },
   "license": "MIT",
