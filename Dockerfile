@@ -7,7 +7,7 @@ VOLUME /arte-server/data
 COPY . /arte-server
 
 RUN apk update && apk upgrade && \
-    apk add --no-cache bash git openssh
+    apk add --no-cache bash git openssh python make g++
     
 RUN npm install forever -g
 RUN npm install
