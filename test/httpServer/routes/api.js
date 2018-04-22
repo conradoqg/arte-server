@@ -808,6 +808,8 @@ describe('HTTPServer', async () => {
                     fileSize: 561,
                     updatedAt: result.body[0].updatedAt,
                     createdAt: result.body[0].createdAt,
+                    uploads: result.body[0].uploads,
+                    downloads: result.body[0].downloads,
                     metadata: { arch: 'all', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
                 });
             result.body[1].should.be.deep.equal(
@@ -820,6 +822,8 @@ describe('HTTPServer', async () => {
                     fileSize: 561,
                     updatedAt: result.body[1].updatedAt,
                     createdAt: result.body[1].createdAt,
+                    uploads: result.body[1].uploads,
+                    downloads: result.body[1].downloads,
                     metadata: { arch: 'all', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
                 });
         });
@@ -852,6 +856,8 @@ describe('HTTPServer', async () => {
                     fileSize: 561,
                     updatedAt: result.body[0].updatedAt,
                     createdAt: result.body[0].createdAt,
+                    uploads: result.body[0].uploads,
+                    downloads: result.body[0].downloads,
                     metadata: { arch: 'all', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
                 });
             result.body[1].should.be.deep.equal(
@@ -864,6 +870,8 @@ describe('HTTPServer', async () => {
                     fileSize: 561,
                     updatedAt: result.body[1].updatedAt,
                     createdAt: result.body[1].createdAt,
+                    uploads: result.body[1].uploads,
+                    downloads: result.body[1].downloads,
                     metadata: { arch: 'all', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
                 });
         });
@@ -887,6 +895,8 @@ describe('HTTPServer', async () => {
                     fileSize: 561,
                     updatedAt: result.body[0].updatedAt,
                     createdAt: result.body[0].createdAt,
+                    uploads: result.body[0].uploads,
+                    downloads: result.body[0].downloads,
                     metadata: { arch: 'all', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
                 });
             result.body[1].should.be.deep.equal(
@@ -899,6 +909,8 @@ describe('HTTPServer', async () => {
                     fileSize: 561,
                     updatedAt: result.body[1].updatedAt,
                     createdAt: result.body[1].createdAt,
+                    uploads: result.body[1].uploads,
+                    downloads: result.body[1].downloads,
                     metadata: { arch: 'all', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
                 });
         });
@@ -922,6 +934,8 @@ describe('HTTPServer', async () => {
                     fileSize: 561,
                     updatedAt: result.body[0].updatedAt,
                     createdAt: result.body[0].createdAt,
+                    uploads: result.body[0].uploads,
+                    downloads: result.body[0].downloads,
                     metadata: { arch: 'all', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
                 });
         });
@@ -945,6 +959,8 @@ describe('HTTPServer', async () => {
                     fileSize: 561,
                     updatedAt: result.body[0].updatedAt,
                     createdAt: result.body[0].createdAt,
+                    uploads: result.body[0].uploads,
+                    downloads: result.body[0].downloads,
                     metadata: { arch: 'all', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
                 });
         });
@@ -990,6 +1006,8 @@ describe('HTTPServer', async () => {
                     fileSize: 561,
                     updatedAt: result.body[0].updatedAt,
                     createdAt: result.body[0].createdAt,
+                    uploads: result.body[0].uploads,
+                    downloads: result.body[0].downloads,
                     metadata: { arch: 'all', os: 'linux', language: 'all', country: 'all', customVersion: 'none' }
                 });
             result.body[1].should.be.deep.equal(
@@ -1002,6 +1020,8 @@ describe('HTTPServer', async () => {
                     fileSize: 561,
                     updatedAt: result.body[1].updatedAt,
                     createdAt: result.body[1].createdAt,
+                    uploads: result.body[1].uploads,
+                    downloads: result.body[1].downloads,
                     metadata: { arch: 'x86', os: 'linux', language: 'all', country: 'all', customVersion: 'none' }
                 });
             result.body[2].should.be.deep.equal(
@@ -1014,6 +1034,8 @@ describe('HTTPServer', async () => {
                     fileSize: 561,
                     updatedAt: result.body[2].updatedAt,
                     createdAt: result.body[2].createdAt,
+                    uploads: result.body[2].uploads,
+                    downloads: result.body[2].downloads,
                     metadata: { arch: 'all', os: 'macos', language: 'all', country: 'all', customVersion: 'none' }
                 });
             result.body[3].should.be.deep.equal(
@@ -1026,6 +1048,8 @@ describe('HTTPServer', async () => {
                     fileSize: 561,
                     updatedAt: result.body[3].updatedAt,
                     createdAt: result.body[3].createdAt,
+                    uploads: result.body[3].uploads,
+                    downloads: result.body[3].downloads,
                     metadata: { arch: 'x86', os: 'windows', language: 'all', country: 'all', customVersion: 'none' }
                 });
         });
@@ -1049,6 +1073,8 @@ describe('HTTPServer', async () => {
                     fileSize: 561,
                     updatedAt: result.body[0].updatedAt,
                     createdAt: result.body[0].createdAt,
+                    uploads: result.body[0].uploads,
+                    downloads: result.body[0].downloads,
                     metadata: { arch: 'all', os: 'linux', language: 'all', country: 'all', customVersion: 'none' }
                 });
             result.body[1].should.be.deep.equal(
@@ -1061,6 +1087,8 @@ describe('HTTPServer', async () => {
                     fileSize: 561,
                     updatedAt: result.body[1].updatedAt,
                     createdAt: result.body[1].createdAt,
+                    uploads: result.body[1].uploads,
+                    downloads: result.body[1].downloads,
                     metadata: { arch: 'x86', os: 'linux', language: 'all', country: 'all', customVersion: 'none' }
                 });
         });
@@ -1084,6 +1112,8 @@ describe('HTTPServer', async () => {
                     fileSize: 561,
                     updatedAt: result.body[0].updatedAt,
                     createdAt: result.body[0].createdAt,
+                    uploads: result.body[0].uploads,
+                    downloads: result.body[0].downloads,
                     metadata: { arch: 'x86', os: 'linux', language: 'all', country: 'all', customVersion: 'none' }
                 });
         });
@@ -1107,6 +1137,8 @@ describe('HTTPServer', async () => {
                     fileSize: 561,
                     updatedAt: result.body[0].updatedAt,
                     createdAt: result.body[0].createdAt,
+                    uploads: result.body[0].uploads,
+                    downloads: result.body[0].downloads,
                     metadata: { arch: 'all', os: 'macos', language: 'all', country: 'all', customVersion: 'none' }
                 });
         });
@@ -1130,6 +1162,8 @@ describe('HTTPServer', async () => {
                     fileSize: 561,
                     updatedAt: result.body[0].updatedAt,
                     createdAt: result.body[0].createdAt,
+                    uploads: result.body[0].uploads,
+                    downloads: result.body[0].downloads,
                     metadata: { arch: 'all', os: 'macos', language: 'all', country: 'all', customVersion: 'none' }
                 });
         });
@@ -1153,6 +1187,8 @@ describe('HTTPServer', async () => {
                     fileSize: 561,
                     updatedAt: result.body[0].updatedAt,
                     createdAt: result.body[0].createdAt,
+                    uploads: result.body[0].uploads,
+                    downloads: result.body[0].downloads,
                     metadata: { arch: 'x86', os: 'windows', language: 'all', country: 'all', customVersion: 'none' }
                 });
             result.body[1].should.be.deep.equal(
@@ -1165,6 +1201,8 @@ describe('HTTPServer', async () => {
                     fileSize: 561,
                     updatedAt: result.body[1].updatedAt,
                     createdAt: result.body[1].createdAt,
+                    uploads: result.body[1].uploads,
+                    downloads: result.body[1].downloads,
                     metadata: { arch: 'all', os: 'macos', language: 'all', country: 'all', customVersion: 'none' }
                 });
             result.body[2].should.be.deep.equal(
@@ -1177,6 +1215,8 @@ describe('HTTPServer', async () => {
                     fileSize: 561,
                     updatedAt: result.body[2].updatedAt,
                     createdAt: result.body[2].createdAt,
+                    uploads: result.body[2].uploads,
+                    downloads: result.body[2].downloads,
                     metadata: { arch: 'all', os: 'linux', language: 'all', country: 'all', customVersion: 'none' }
                 });
             result.body[3].should.be.deep.equal(
@@ -1189,6 +1229,8 @@ describe('HTTPServer', async () => {
                     fileSize: 561,
                     updatedAt: result.body[3].updatedAt,
                     createdAt: result.body[3].createdAt,
+                    uploads: result.body[3].uploads,
+                    downloads: result.body[3].downloads,
                     metadata: { arch: 'x86', os: 'linux', language: 'all', country: 'all', customVersion: 'none' }
                 });
 
@@ -1213,6 +1255,8 @@ describe('HTTPServer', async () => {
                     fileSize: 561,
                     updatedAt: result.body[0].updatedAt,
                     createdAt: result.body[0].createdAt,
+                    uploads: result.body[0].uploads,
+                    downloads: result.body[0].downloads,
                     metadata: { arch: 'x86', os: 'windows', language: 'all', country: 'all', customVersion: 'none' }
                 });
         });
@@ -1259,6 +1303,8 @@ describe('HTTPServer', async () => {
                     fileSize: 561,                    
                     updatedAt: deleteResult.body.updatedAt,
                     createdAt: deleteResult.body.createdAt,
+                    uploads: deleteResult.body.uploads,
+                    downloads: deleteResult.body.downloads,
                     metadata: { arch: 'all', os: 'all', language: 'all', country: 'all', customVersion: 'none' }
                 });
 

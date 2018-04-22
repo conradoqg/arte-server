@@ -37,7 +37,9 @@ block content
                             th Artifact
                             th Version
                             th File Size
-                            th Last Update
+                            th Updated
+                            th Uploads
+                            th Downloads
                             th Metadata
                             th
                     tbody
@@ -47,7 +49,9 @@ block content
                                 td #{artifact.name}
                                 td #{artifact.version}
                                 td #{formatters.filesizeToHuman(artifact.fileSize)}
-                                td #{formatters.dateToMomentAgo(artifact.lastUpdate)}
+                                td #{formatters.dateToMomentAgo(artifact.updatedAt)}
+                                td #{artifact.uploads}
+                                td #{artifact.downloads}
                                 td #{formatters.metadataObjectToList(artifact.metadata)}    
                                 td                                                            
                                     .buttons
