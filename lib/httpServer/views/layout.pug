@@ -87,13 +87,7 @@ html(lang="en")
         footer.footer
             .container
                 .content.has-centered-text
-                    p
-                        strong Arte
-                        span  by
-                        a(href="https://github.com/conradoqg")  Conrado Quilles Gomes
-                        span . The source code is licensed under
-                        a(href="https://github.com/conradoqg/arte-server/blob/master/LICENSE.md")  MIT
-                        span . 
+                    p Made with #[span.icon #[i.fas.fa-heart(style='color: red')]] #[span  by] #[a(href="https://github.com/conradoqg")  Conrado Quilles Gomes] #[span . The #[a(href="https://github.com/conradoqg/arte-server") source code ] is licensed under] #[a(href="https://github.com/conradoqg/arte-server/blob/master/LICENSE.md")  MIT]#[span . ]
         script
             if env == 'development'
                 include layout.js

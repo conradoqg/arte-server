@@ -10,6 +10,7 @@ const Bucket = require('../../../lib/bucket');
 const Artifact = require('../../../lib/artifact');
 const Webhook = rewire('../../../lib/webhook');
 const Auth = rewire('../../../lib/auth');
+const Metric = require('../../../lib/metric');
 
 const EMBEDDED_MONGO = true;
 const KEEP_DATABASE = false;
@@ -39,11 +40,13 @@ describe('HTTPServer', async () => {
         const bucketService = new Bucket(dbService.storage, dbService.metadata, authService);
         const webhookService = new Webhook(dbService.metadata);
         const artifactServer = new Artifact(dbService.storage, dbService.metadata, webhookService, authService);
-        const server = new HTTPServer(dbService, bucketService, artifactServer, webhookService, authService);
+        const metricService = new Metric(authService);
+        const server = new HTTPServer(dbService, bucketService, artifactServer, webhookService, authService, metricService);
         return {
             server,
             dbService,
             authService,
+            metricService,
             config,
             initialToken: await authService.getFirstTimeToken(),
             userInvalid: {
@@ -80,7 +83,7 @@ describe('HTTPServer', async () => {
 
     const deleteContext = async (context) => {
         await context.dbService.destroy();
-        await context.dbService.disconnect();
+        await context.dbService.disconnect();        
     };
 
     before(async () => {
@@ -1300,7 +1303,7 @@ describe('HTTPServer', async () => {
                     version: '1.0',
                     normalizedVersion: '0000000001.0000000000',
                     path: path.normalize('bucket1/artifact1-1.0-undefined-all-all-all-all-none.zip'),
-                    fileSize: 561,                    
+                    fileSize: 561,
                     updatedAt: deleteResult.body.updatedAt,
                     createdAt: deleteResult.body.createdAt,
                     uploads: deleteResult.body.uploads,
@@ -1381,7 +1384,7 @@ describe('HTTPServer', async () => {
                 .expect(200);
         });
     });
-
+    
     describe('features', async () => {
         // put bucket1/artifact4/{empty} -> bucket1/artifact4/{now}
         step('should create the artifact 4 with the default version (version=now) using user 1', async () => {

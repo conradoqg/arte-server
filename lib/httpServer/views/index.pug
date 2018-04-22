@@ -1,8 +1,7 @@
 extends layout.pug
 
 block content
-    .section
-        .container   
+    .section        
             h1.title.has-text-centered Artifacts
             form(action='javascript:void(0);', onSubmit='searchArtifact(event);')        
                 .field.is-grouped.is-grouped-multiline
@@ -26,8 +25,13 @@ block content
                         label.label Metadata
                     p.control
                         input.input(id='metadataTextbox', type="text", placeholder="os=linux, arch=x86", value=`${metadata && Object.keys(metadata).length > 0 ? formatters.metadataObjectToList(metadata) : ''}`)
+                    .field-label.is-normal
+                        label.label &nbsp;
                     p.control
                         input.button.is-primary(type='submit', value='Search') 
+                        .field-label.is-normal
+                    label.label &nbsp;
+                    p.control &nbsp;
             if !message
                 hr                
                 table.table.is-fullwidth
@@ -38,8 +42,12 @@ block content
                             th Version
                             th File Size
                             th Updated
-                            th Uploads
-                            th Downloads
+                            th
+                                span.icon(data-balloon="Downloads", data-balloon-pos="up")
+                                    i.fas.fa-upload
+                            th 
+                                span.icon(data-balloon="Uploads", data-balloon-pos="up")
+                                    i.fas.fa-download
                             th Metadata
                             th
                     tbody
