@@ -1,7 +1,8 @@
 const arteServer = require('./../lib/arte-server');
 const yargs = require('yargs');
 
-const argv = yargs
+const argv = yargs  
+    .usage('Usage: $0 [options]')  
     .alias('a', 'host')
     .describe('a', 'Host address (localhost by default)')
     .alias('p', 'port')
@@ -12,14 +13,13 @@ const argv = yargs
     .describe('m', 'Mongo URL (mongodb://localhost/arte-server by default)')
     .alias('s', 'storage-path')
     .describe('s', 'Storage path (data/storage by default)')
-    .alias('ldap')
-    .describe('ldap', 'Stringified JSON object array with the LDAP configuration')
+    .alias('d', 'ldap')
+    .describe('d', 'Stringified JSON object array with the LDAP configuration')
     .alias('e', 'env')
-    .describe('e', 'Environment type (production or development; development by default)')
+    .describe('e', 'Environment type (production, development or test; development by default)')
     .help('h')
     .alias('h', 'help')
-    .version()
-    .wrap(yargs.terminalWidth())
+    .wrap(yargs.terminalWidth()) 
     .argv;
 
 arteServer(argv.host, argv.port, argv.logLevel, argv.mongoUrl, argv.storagePath, argv.ldap, argv.env);
